@@ -1,0 +1,13 @@
+services:
+  jenkins:
+    container_name: jenkins
+    build:
+      context: .
+      dockerfile: jenkins.Dockerfile
+    ports:
+      - '49999:8080'
+      - '50000:50000'
+    volumes:
+      - ./jenkins:/var/jenkins_home
+      - /usr/bin/docker:/usr/bin/docker
+      - /var/run/docker.sock:/var/run/docker.sock
