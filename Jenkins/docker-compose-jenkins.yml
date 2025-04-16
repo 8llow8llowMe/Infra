@@ -1,6 +1,7 @@
 services:
   jenkins:
     container_name: jenkins
+    restart: always
     build:
       context: .
       dockerfile: jenkins.Dockerfile
@@ -11,3 +12,10 @@ services:
       - ./jenkins:/var/jenkins_home
       - /usr/bin/docker:/usr/bin/docker
       - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - 8llow8llowme-net
+
+networks:
+  8llow8llowme-net:
+    name: 8llow8llowme-net
+    driver: bridge
