@@ -8,7 +8,7 @@ if [ ! -d "$MINIO_DIR" ]; then
 fi
 
 # Docker Compose 실행
-docker-compose -f docker-compose-minio.yml up -d
+docker compose -f docker-compose-minio.yml up -d
 
 # 상태 출력
 echo "MinIO 컨테이너 실행 완료"
