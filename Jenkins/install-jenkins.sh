@@ -7,7 +7,7 @@ if [ ! -d "$JENKINS_DIR" ]; then
 fi
 
 # Docker Compose 실행
-docker-compose -f docker-compose-jenkins.yml up -d --build
+docker compose -f docker-compose-jenkins.yml up -d --build
 
 # Jenkins 컨테이너 실행 확인 대기
 echo "Jenkins 컨테이너가 시작될 때까지 기다립니다..."
