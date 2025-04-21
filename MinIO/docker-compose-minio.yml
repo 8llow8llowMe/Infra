@@ -1,6 +1,6 @@
 services:
   minio:
-    image:
+    image: minio/minio:latest
     container_name: minio
     ports:
       - '9000:9000' # minIO API
