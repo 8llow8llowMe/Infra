@@ -6,7 +6,7 @@ set -e
 MYSQL_VOLUME_DIR="./mysql-data"
 if [ ! -d "$MYSQL_VOLUME_DIR" ]; then
     mkdir -p "$MYSQL_VOLUME_DIR"
-    echo "✅ MySQL 데이터 디렉토리 생성 완료: $MYSQL_VOLUME_DIR"
+    echo "MySQL 데이터 디렉토리 생성 완료: $MYSQL_VOLUME_DIR"
 fi
 
 # Docker Compose 실행
