@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 LOG_FILE="/tmp/jenkins-entrypoint.log"
 touch "$LOG_FILE"
 
@@ -18,4 +20,5 @@ fi
 touch /tmp/jenkins-entrypoint-test
 echo "[$(date)] [INFO] ENTRYPOINT 실행 완료" | tee -a "$LOG_FILE"
 
-exec /usr/bin/tini -- /usr/local/bin/jenkins.sh "$@"
+# jenkins로 전환
+exec su - jenkins -c "/usr/bin/tini -- /usr/local/bin/jenkins.sh $*"
