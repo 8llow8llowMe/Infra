@@ -5,9 +5,11 @@ FROM jenkins/jenkins:latest
 USER root
 
 # Java 21 설치 + 기본 설정
-RUN apt-get update && apt-get install -y openjdk-21-jdk
-ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk-arm64
-ENV PATH=$JAVA_HOME/bin:$PATH
+RUN curl -L https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.2%2B13/OpenJDK21U-jdk_aarch64_linux_hotspot_21.0.2_13.tar.gz \
+    -o /tmp/openjdk21.tar.gz && \
+    mkdir -p /opt/java/openjdk21 && \
+    tar -xzf /tmp/openjdk21.tar.gz -C /opt/java/openjdk21 --strip-components=1 && \
+    rm /tmp/openjdk21.tar.gz
 
 # Docker Engine만 apt로 간단히 설치 (Compose 제외)
 RUN apt-get update && apt-get install -y docker.io
