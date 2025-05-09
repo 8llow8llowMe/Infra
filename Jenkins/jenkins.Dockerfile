@@ -4,6 +4,11 @@ FROM jenkins/jenkins:latest
 # 추가 패키지를 설치하기 위해 root 사용자로 전환
 USER root
 
+# Java 21 설치 + 기본 설정
+RUN apt-get update && apt-get install -y openjdk-21-jdk
+ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk-arm64
+ENV PATH=$JAVA_HOME/bin:$PATH
+
 # Docker Engine만 apt로 간단히 설치 (Compose 제외)
 RUN apt-get update && apt-get install -y docker.io
 
@@ -19,7 +24,3 @@ RUN chmod +x /usr/local/bin/docker-entrypoint-init.sh
 
 # Entrypoint 덮어쓰기
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint-init.sh"]
-
-# Jenkins 사용자로 전환
-# 이는 보안상의 이유로, Jenkins 프로세스는 일반 사용자 권한으로 실행되어야 하기 때문
-USER jenkins
