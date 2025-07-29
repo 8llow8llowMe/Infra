@@ -13,6 +13,15 @@ COPY --from=jdk /opt/java/openjdk /opt/java/openjdk21
 ENV JAVA_HOME=/opt/java/openjdk21
 ENV PATH=$JAVA_HOME/bin:$PATH
 
+# Node.js 설치 (22.x LTS)
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    apt-get install -y nodejs && \
+    node -v && npm -v
+
+# MinIO Client (mc) 설치
+RUN curl -s https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bin/mc && \
+    chmod +x /usr/local/bin/mc
+
 # Docker Engine만 apt로 간단히 설치 (Compose 제외)
 RUN apt-get update && apt-get install -y docker.io
 
