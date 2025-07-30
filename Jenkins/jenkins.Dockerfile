@@ -13,12 +13,12 @@ COPY --from=jdk /opt/java/openjdk /opt/java/openjdk21
 ENV JAVA_HOME=/opt/java/openjdk21
 ENV PATH=$JAVA_HOME/bin:$PATH
 
-# Node.js 설치 (22.x LTS)
+# Node.js 설치 (22.x LTS) (추가 부분 - 추후에 Jenkins Agent를 통해서 실행할 것이므로 해당 코드는 없어도 됨)
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     apt-get install -y nodejs && \
     node -v && npm -v
 
-# MinIO Client (mc) 설치
+# MinIO Client (mc) 설치 (추가 부분 - 추후에 Jenkins Agent를 통해서 실행할 것이므로 해당 코드는 없어도 됨)
 RUN curl -s https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bin/mc && \
     chmod +x /usr/local/bin/mc
 
