@@ -18,6 +18,10 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     apt-get install -y nodejs && \
     node -v && npm -v
 
+# Yarn 설치
+RUN npm install -g yarn && \
+    yarn --version
+
 # MinIO Client (mc) 설치 (추가 부분 - 추후에 Jenkins Agent를 통해서 실행할 것이므로 해당 코드는 없어도 됨)
 RUN curl -s https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bin/mc && \
     chmod +x /usr/local/bin/mc
