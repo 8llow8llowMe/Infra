@@ -22,14 +22,9 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
 RUN npm install -g yarn && \
     yarn --version
 
-# MinIO Client (mc) 설치 - 아키텍처 자동 감지
-RUN ARCH=$(uname -m) && \
-    if [ "$ARCH" = "aarch64" ]; then ARCH="arm64"; fi && \
-    if [ "$ARCH" = "x86_64" ]; then ARCH="amd64"; fi && \
-    echo "Installing MinIO Client for architecture: $ARCH" && \
-    curl -s https://dl.min.io/client/mc/release/linux-${ARCH}/mc -o /usr/local/bin/mc && \
-    chmod +x /usr/local/bin/mc && \
-    /usr/local/bin/mc --version
+# MinIO Client (mc) 설치 - ARM64 고정 (추가 부분 - 추후에 Jenkins Agent를 통해서 실행할 것이므로 해당 코드는 없어도 됨)
+RUN curl -s https://dl.min.io/client/mc/release/linux-arm64/mc -o /usr/local/bin/mc && \
+    chmod +x /usr/local/bin/mc
 
 # Docker Engine만 apt로 간단히 설치 (Compose 제외)
 RUN apt-get update && apt-get install -y docker.io
