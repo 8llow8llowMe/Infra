@@ -1,0 +1,32 @@
+services:
+  certbot:
+    image: certbot/certbot:latest
+    container_name: certbot
+    volumes:
+      - ./letsencrypt:/etc/letsencrypt
+      - ./logs:/var/log/letsencrypt
+      - ./webroot:/var/www/certbot
+      # Host의 Docker 제어 권한 부여 (nginx reload 위해 필요)
+      # certbot이 인증서 갱신 후 직접 `docker exec nginx nginx -s reload` 실행 가능
+      - /var/run/docker.sock:/var/run/docker.sock # docker 제어 권한
+    entrypoint: >
+      sh -c 'trap exit TERM;
+         while :; do
+           certbot renew --webroot -w /var/www/certbot --quiet \
+             --deploy-hook "docker exec nginx nginx -s reload";
+           sleep 12h & wait $${!};
+         done;'
+
+  # webroot 공유 볼륨 (Nginx에서 인증서 검증용으로 사용)
+  certbot-webroot:
+    image: nginx:alpine
+    container_name: certbot-webroot
+    volumes:
+      - ./webroot:/var/www/certbot
+    networks:
+      - 8llow8llowme-net
+
+networks:
+  8llow8llowme-net:
+    name: 8llow8llowme-net
+    driver: bridge
