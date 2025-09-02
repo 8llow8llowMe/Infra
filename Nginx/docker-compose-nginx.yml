@@ -7,10 +7,13 @@ services:
       dockerfile: nginx.Dockerfile
     ports:
       - '80:80'
+      - '443:443'
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf
       - ./conf.d:/etc/nginx/conf.d
       - ./logs:/var/log/nginx
+      - ../certbot/webroot:/var/www/certbot # webroot 공유
+      - ../certbot/letsencrypt:/etc/letsencrypt # 인증서 공유
     networks:
       - 8llow8llowme-net
 
