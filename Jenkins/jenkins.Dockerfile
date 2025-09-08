@@ -22,6 +22,40 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
 RUN npm install -g yarn && \
     yarn --version
 
+# Android SDK 설치 준비 (wget, unzip 필요)
+RUN apt-get update && apt-get install -y wget unzip
+
+# Android SDK 환경 변수
+ENV ANDROID_SDK_ROOT=/opt/android-sdk
+ENV ANDROID_HOME=$ANDROID_SDK_ROOT
+ENV PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH
+
+# command line tools 다운로드 및 설치
+RUN mkdir -p $ANDROID_SDK_ROOT/cmdline-tools && \
+    wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O /tmp/cmdline-tools.zip && \
+    unzip /tmp/cmdline-tools.zip -d $ANDROID_SDK_ROOT/cmdline-tools && \
+    mv $ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools $ANDROID_SDK_ROOT/cmdline-tools/latest && \
+    rm /tmp/cmdline-tools.zip
+
+# 필수 SDK 패키지 설치
+RUN yes | sdkmanager --licenses && \
+    sdkmanager "platform-tools" \
+               "platforms;android-34" \
+               "build-tools;34.0.0" \
+               "ndk;26.1.10909125" \
+               "cmake;3.22.1"
+
+# Gradle 설치
+RUN wget https://services.gradle.org/distributions/gradle-8.7-bin.zip -P /tmp && \
+    unzip /tmp/gradle-8.7-bin.zip -d /opt && \
+    ln -s /opt/gradle-8.7 /opt/gradle && \
+    rm /tmp/gradle-8.7-bin.zip
+ENV GRADLE_HOME=/opt/gradle
+ENV PATH=$GRADLE_HOME/bin:$PATH
+
+# fastlane 설치
+RUN gem install fastlane -NV
+
 # MinIO Client (mc) 설치 - ARM64 고정 (추가 부분 - 추후에 Jenkins Agent를 통해서 실행할 것이므로 해당 코드는 없어도 됨)
 RUN curl -s https://dl.min.io/client/mc/release/linux-arm64/mc -o /usr/local/bin/mc && \
     chmod +x /usr/local/bin/mc
