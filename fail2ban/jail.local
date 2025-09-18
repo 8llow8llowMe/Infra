@@ -1,0 +1,46 @@
+[DEFAULT]
+# 밴 유지 시간 설정
+# 1시간 차단
+bantime = 3600
+# 10분 동안
+findtime = 600
+# 기본값 (다른 jail에서 override 가능)
+maxretry = 5
+backend = auto
+
+[sshd]
+enabled = false
+
+[sshd-ddos]
+enabled = false
+
+# 악성 User-Agent 차단
+[nginx-badbots]
+enabled = true
+port = http,https
+filter = nginx-badbots
+logpath = /var/log/nginx/access.log
+# 한 번이라도 악성 UA 나오면 차단
+maxretry = 1
+
+# 존재하지 않는 스크립트 파일 요청 차단
+[nginx-noscript]
+enabled = true
+port = http,https
+filter = nginx-noscript
+logpath = /var/log/nginx/access.log
+# 두 번까지는 허용
+maxretry = 2
+
+# 짧은 시간 안에 404/403/400 과다 발생 시 차단
+[nginx-botsearch]
+enabled = true
+port = http,https
+filter = nginx-botsearch
+logpath = /var/log/nginx/access.log
+# 5분
+findtime = 300
+# 50회 이상이면 차단
+maxretry = 50
+# 하루 차단
+bantime = 86400
