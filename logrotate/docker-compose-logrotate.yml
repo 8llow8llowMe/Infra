@@ -1,0 +1,17 @@
+services:
+  logrotate:
+    container_name: logrotate
+    build:
+      context: .
+      dockerfile: logrotate.Dockerfile
+    restart: always
+    volumes:
+      - ../nginx/logs:/var/log/nginx # Nginx 로그 공유 (로테이션 대상)
+      - /var/run/docker.sock:/var/run/docker.sock # nginx 컨테이너 제어용 (재오픈 명령 실행)
+    networks:
+      - 8llow8llowme-net
+
+networks:
+  8llow8llowme-net:
+    name: 8llow8llowme-net
+    driver: bridge
