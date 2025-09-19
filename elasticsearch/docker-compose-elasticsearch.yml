@@ -1,0 +1,34 @@
+services:
+  elasticsearch:
+    image: elasticsearch:9.1.4
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g # JVM 메모리 (테스트 환경 기준)
+      - xpack.security.enabled=true
+    ports:
+      - '9200:9200'
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    networks:
+      - 8llow8llowme-net
+
+  kibana:
+    image: kibana:9.1.4
+    container_name: kibana
+    depends_on:
+      - elasticsearch
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - '5601:5601'
+    networks:
+      - 8llow8llowme-net
+
+volumes:
+  es-data:
+
+networks:
+  8llow8llowme-net:
+    name: 8llow8llowme-net
+    driver: bridge
