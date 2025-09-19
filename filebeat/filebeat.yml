@@ -1,0 +1,19 @@
+filebeat.inputs:
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/nginx/access.log
+      - /var/log/nginx/error.log
+    fields:
+      service: nginx
+    fields_under_root: true
+
+output.elasticsearch:
+  hosts: ['http://<ELASTICSEARCH_SERVER_IP>:9200'] # Elasticsearch 서버 IP
+  indices:
+    - index: 'nginx-logs-%{+yyyy.MM.dd}'
+      when.equals:
+        service: 'nginx'
+
+setup.kibana:
+  host: '<ELASTICSEARCH_SERVER_IP>:5601' # Kibana 서버
