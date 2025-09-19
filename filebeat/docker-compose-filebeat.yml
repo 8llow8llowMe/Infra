@@ -1,0 +1,16 @@
+services:
+  filebeat:
+    build:
+      context: ./filebeat
+      dockerfile: Dockerfile
+    container_name: filebeat
+    restart: always
+    volumes:
+      - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - ../nginx/logs:/var/log/nginx:ro # Nginx 로그 읽기
+    networks:
+      - 8llow8llowme-net
+
+networks:
+  8llow8llowme-net:
+    driver: bridge
