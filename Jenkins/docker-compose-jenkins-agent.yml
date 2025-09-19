@@ -1,0 +1,29 @@
+services:
+  jenkins-agent:
+    container_name: jenkins-agent
+    restart: always
+    build:
+      context: .
+      dockerfile: jenkins-agent.Dockerfile
+    environment:
+      # Jenkins Master 연결 정보 (실제 값으로 변경 필요)
+      - JENKINS_URL=http://deploy-server:49999
+      - JENKINS_SECRET=${JENKINS_AGENT_SECRET}
+      - JENKINS_AGENT_NAME=${JENKINS_AGENT_NAME:-jenkins-agent}
+      - JENKINS_AGENT_WORKDIR=/home/jenkins/agent
+    volumes:
+      - ./jenkins-agent:/home/jenkins/agent
+      - /usr/bin/docker:/usr/bin/docker
+      - /var/run/docker.sock:/var/run/docker.sock
+      # 각 서버별 프로젝트 디렉토리 마운트 (필요시)
+      # - /path/to/projects:/home/jenkins/projects
+    networks:
+      - 8llow8llowme-net
+    depends_on:
+      - jenkins-master
+
+networks:
+  8llow8llowme-net:
+    name: 8llow8llowme-net
+    driver: bridge
+    external: true
