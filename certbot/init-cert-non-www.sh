@@ -28,7 +28,7 @@ echo "[init] 인증서 발급 시작"
 docker compose -f docker-compose-certbot.yml run --rm \
   --entrypoint certbot certbot certonly \
   --webroot -w /var/www/certbot \
-  -d "$DOMAIN" -d "www.$DOMAIN" \
+  -d "$DOMAIN" \
   --email "$EMAIL" \
   --agree-tos \
   --no-eff-email
