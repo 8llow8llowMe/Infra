@@ -1,12 +1,13 @@
 [DEFAULT]
-# 밴 유지 시간 설정
-# 1시간 차단
-bantime = 3600
-# 10분 동안
-findtime = 600
-# 기본값 (다른 jail에서 override 가능)
-maxretry = 5
-backend = auto
+# 기본 차단 시간: 1일 (필요시 더 길게 설정)
+bantime  = 86400      ; # 24h
+findtime = 600        ; # 10분 기준(필터별로 override 가능)
+maxretry = 3          ; # 기본 허용 시도 횟수 (필터별 override 가능)
+backend  = auto
+
+# 안전목록 — 내부 IP, 모니터링/헬스체크, 클라우드 서비스 등은 여기 추가
+# 예: ignoreip = 127.0.0.1/8 192.168.0.0/16 203.0.113.5
+ignoreip = 127.0.0.1/8 ::1
 
 [sshd]
 enabled = false
@@ -14,33 +15,32 @@ enabled = false
 [sshd-ddos]
 enabled = false
 
-# 악성 User-Agent 차단
+# 1) 악성 User-Agent 차단 — UA 패턴만 나오면 즉시 차단
 [nginx-badbots]
-enabled = true
-port = http,https
-filter = nginx-badbots
-logpath = /var/log/nginx/access.log
-# 한 번이라도 악성 UA 나오면 차단
-maxretry = 1
+enabled  = true
+port     = http,https
+filter   = nginx-badbots
+logpath  = /var/log/nginx/access.log
+maxretry = 1            ; # 1회만 탐지되어도 차단
+findtime = 600          ; # 10분 이내
+bantime  = 604800       ; # 7일(영구차단 전 임시값) — 필요시 더 길게
 
-# 존재하지 않는 스크립트 파일 요청 차단
+# 2) 존재하지 않는 스크립트/확장자 요청 차단 — 대부분 자동 스캔(봇)이므로 빠르게 차단
 [nginx-noscript]
-enabled = true
-port = http,https
-filter = nginx-noscript
-logpath = /var/log/nginx/access.log
-# 두 번까지는 허용
-maxretry = 2
+enabled  = true
+port     = http,https
+filter   = nginx-noscript
+logpath  = /var/log/nginx/access.log
+maxretry = 1            ; # 1회 차단
+findtime = 300          ; # 5분 내
+bantime  = 604800       ; # 7일
 
-# 짧은 시간 안에 404/403/400 과다 발생 시 차단
+# 3) 경로 스캐닝(404/403 과다 발생) — API 서비스라면 지나치게 낮춘다간 문제
 [nginx-botsearch]
-enabled = true
-port = http,https
-filter = nginx-botsearch
-logpath = /var/log/nginx/access.log
-# 5분
-findtime = 300
-# 50회 이상이면 차단
-maxretry = 50
-# 하루 차단
-bantime = 86400
+enabled  = true
+port     = http,https
+filter   = nginx-botsearch
+logpath  = /var/log/nginx/access.log
+maxretry = 8            ; # 8회 이상(짧은 기간에 반복되면 차단)
+findtime = 300          ; # 5분 내
+bantime  = 86400        ; # 24시간 차단
