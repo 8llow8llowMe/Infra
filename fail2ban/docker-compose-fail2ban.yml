@@ -1,6 +1,7 @@
 services:
   fail2ban:
     container_name: fail2ban
+    image: fail2ban-fail2ban:latest # 명시적으로 커스텀 이미지명 설정
     build:
       context: .
       dockerfile: fail2ban.Dockerfile
