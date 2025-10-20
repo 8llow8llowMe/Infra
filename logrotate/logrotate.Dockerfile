@@ -1,6 +1,6 @@
 FROM alpine:latest
 
-RUN apk add --no-cache logrotate bash
+RUN apk add --no-cache logrotate bash docker-cli
 
 # logrotate 설정 복사
 COPY logrotate.conf /etc/logrotate.conf
