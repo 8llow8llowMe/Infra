@@ -1,45 +1,52 @@
 [DEFAULT]
-# 기본 차단 시간: 1일 (필요시 더 길게 설정)
-bantime  = 86400      ; # 24h
-findtime = 600        ; # 10분 기준(필터별로 override 가능)
-maxretry = 3          ; # 기본 허용 시도 횟수 (필터별 override 가능)
+# 기본 설정 (로그 및 공통값)
+loglevel = INFO
+logtarget = /var/log/fail2ban.log  ; 파일에 기록 (entrypoint가 stdout 복제)
+syslogsocket = auto
+
+bantime  = 86400      ; # 24시간 차단 (필요시 서비스 성격에 맞게 조정)
+findtime = 600        ; # 10분 이내 시도 기준
+maxretry = 3          ; # 기본 허용 횟수
 backend  = auto
 
-# 안전목록 — 내부 IP, 모니터링/헬스체크, 클라우드 서비스 등 (자기 IP / 내부망 / 헬스체크 / Cloudflare IP 등 화이트리스트)
+# 내부망 / 허용 IP 화이트리스트
 ignoreip = 127.0.0.1/8 ::1 192.168.0.0/16 10.0.0.0/8 1.235.23.72
 
-[sshd]
-enabled = false
+# 필터별 규칙 정의
 
-[sshd-ddos]
-enabled = false
-
-# 1) 악성 User-Agent 차단 — UA 패턴만 나오면 즉시 차단
+# 1️. 악성 User-Agent 기반 봇 (즉시 차단)
 [nginx-badbots]
 enabled  = true
 port     = http,https
 filter   = nginx-badbots
 logpath  = /var/log/nginx/access.log
-maxretry = 1            ; # 1회만 탐지되어도 차단
-findtime = 600          ; # 10분 이내
-bantime  = 604800       ; # 7일(영구차단 전 임시값) — 필요시 더 길게
+maxretry = 1
+findtime = 300
+bantime  = 604800   ; # 7일
 
-# 2) 존재하지 않는 스크립트/확장자 요청 차단 — 대부분 자동 스캔(봇)이므로 빠르게 차단
+# 2. 스크립트/확장자 요청 (.php, .asp 등)
 [nginx-noscript]
 enabled  = true
-port     = http,https
 filter   = nginx-noscript
 logpath  = /var/log/nginx/access.log
-maxretry = 1            ; # 1회 차단
-findtime = 300          ; # 5분 내
-bantime  = 604800       ; # 7일
+maxretry = 1
+findtime = 300
+bantime  = 604800
 
-# 3) 경로 스캐닝(404/403 과다 발생) — API 서비스라면 지나치게 낮춘다간 문제
+# 3. 관리자/워드프레스 경로 스캔 탐지
 [nginx-botsearch]
 enabled  = true
-port     = http,https
 filter   = nginx-botsearch
 logpath  = /var/log/nginx/access.log
-maxretry = 8            ; # 8회 이상(짧은 기간에 반복되면 차단)
-findtime = 300          ; # 5분 내
-bantime  = 86400        ; # 24시간 차단
+maxretry = 1
+findtime = 300
+bantime  = 604800
+
+# 4. 짧은 시간 내 에러 폭주 감지
+[nginx-errburst]
+enabled  = true
+filter   = nginx-errburst
+logpath  = /var/log/nginx/access.log
+maxretry = 15
+findtime = 60
+bantime  = 86400
