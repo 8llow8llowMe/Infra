@@ -1,7 +1,7 @@
 services:
   fail2ban:
     container_name: fail2ban
-    image: fail2ban-fail2ban:latest # 명시적으로 커스텀 이미지명 설정
+    image: fail2ban-fail2ban:latest
     build:
       context: .
       dockerfile: fail2ban.Dockerfile
@@ -9,9 +9,16 @@ services:
     cap_add:
       - NET_ADMIN # iptables 제어 권한
     volumes:
-      - ../nginx/logs:/var/log/nginx:ro # Nginx 로그 읽기 전용
+      - ../nginx/logs:/var/log/nginx:ro # Nginx 로그 읽기
+      - ./logs:/var/log # fail2ban 자체 로그 저장
     networks:
       - 8llow8llowme-net
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
 
 networks:
   8llow8llowme-net:
