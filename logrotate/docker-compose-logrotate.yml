@@ -1,13 +1,15 @@
 services:
   logrotate:
     container_name: logrotate
+    restart: always
     build:
       context: .
       dockerfile: logrotate.Dockerfile
-    restart: always
     volumes:
-      - ../nginx/logs:/var/log/nginx # Nginx 로그 공유 (로테이션 대상)
-      - /var/run/docker.sock:/var/run/docker.sock # nginx 컨테이너 제어용 (재오픈 명령 실행)
+      # Nginx 로그 파일 공유 (로테이션 대상)
+      - ../nginx/logs:/var/log/nginx
+      # nginx 컨테이너 제어 (reopen 명령)
+      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - 8llow8llowme-net
 
