@@ -11,7 +11,10 @@ RUN apk add --no-cache fail2ban iptables bash coreutils
 COPY jail.local /etc/fail2ban/jail.local
 COPY filter.d/ /etc/fail2ban/filter.d/
 COPY entrypoint.sh /entrypoint.sh
+COPY healthcheck.sh /healthcheck.sh
 
-RUN chmod +x /entrypoint.sh
+# 실행 권한 부여
+RUN chmod +x /entrypoint.sh /healthcheck.sh
 
+# 기본 실행 스크립트 (Fail2Ban 서버 + 로그 미러링)
 ENTRYPOINT ["/entrypoint.sh"]
