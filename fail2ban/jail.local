@@ -1,7 +1,7 @@
 [DEFAULT]
 # 기본 설정 (로그 및 공통값)
 loglevel = INFO
-logtarget = /var/log/fail2ban.log  ; 파일에 기록 (entrypoint가 stdout 복제)
+logtarget = /var/log/fail2ban.log
 syslogsocket = auto
 
 bantime  = 86400      ; # 24시간 차단 (필요시 서비스 성격에 맞게 조정)
@@ -12,7 +12,14 @@ backend  = auto
 # 내부망 / 허용 IP 화이트리스트
 ignoreip = 127.0.0.1/8 ::1 192.168.0.0/16 10.0.0.0/8 1.235.23.72
 
-# 필터별 규칙 정의
+# 비활성화된 기본 jail (컨테이너 내 SSH 없음)
+[sshd]
+enabled = false
+
+[sshd-ddos]
+enabled = false
+
+# 필터별 규칙 정의 (활성화된 Nginx 관련 Jail)
 
 # 1️. 악성 User-Agent 기반 봇 (즉시 차단)
 [nginx-badbots]
