@@ -7,18 +7,23 @@ services:
       dockerfile: fail2ban.Dockerfile
     restart: always
     cap_add:
-      - NET_ADMIN # iptables 제어 권한
+      - NET_ADMIN # iptables 제어 권한 (Fail2Ban 필수)
     volumes:
-      - ../nginx/logs:/var/log/nginx:ro # Nginx 로그 읽기
-      - ./logs:/var/log # fail2ban 자체 로그 저장
-    networks:
-      - 8llow8llowme-net
-
+      - ../nginx/logs:/var/log/nginx:ro # Nginx 로그 읽기 전용 공유
+    environment:
+      - TZ=Asia/Seoul
     logging:
       driver: json-file
       options:
         max-size: "50m"
         max-file: "3"
+    healthcheck:
+      test: ["CMD", "/healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+    networks:
+      - 8llow8llowme-net
 
 networks:
   8llow8llowme-net:
