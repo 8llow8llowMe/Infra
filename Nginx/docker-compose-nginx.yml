@@ -19,13 +19,13 @@ services:
       # Certbot (HTTP-01 챌린지 및 인증서 공유)
       - ../certbot/webroot:/var/www/certbot
       - ../certbot/letsencrypt:/etc/letsencrypt
-
+    environment:
+      - TZ=Asia/Seoul
     logging:
       driver: 'json-file' # Docker 기본 로깅 (stdout/stderr 수집)
       options:
-        max-size: '100m'  # 로그 파일 100MB 초과 시 자동 롤링
-        max-file: '5'     # 최대 5개 파일까지 보관
-
+        max-size: '50m'  # 로그 파일 50MB 초과 시 자동 롤링
+        max-file: '3'     # 최대 3개 파일까지 보관
     networks:
       - 8llow8llowme-net
 
