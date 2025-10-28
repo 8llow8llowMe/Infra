@@ -1,7 +1,7 @@
 # NGINX Dockerfile
 # - Alpine 기반 (경량)
 # - access.log → 파일 저장 + stdout 병행 (tail -F)
-# - Fail2Ban, logrotate, ELK 모두 호환
+# - Fail2Ban, logrotate, ELK 호환 구조
 
 FROM nginx:alpine
 
@@ -14,9 +14,8 @@ RUN mkdir -p /var/log/nginx \
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY conf.d/ /etc/nginx/conf.d/
 
-# 엔트리포인트 스크립트 복사
+# 엔트리포인트 복사 및 실행권한 부여
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# 기본 엔트리포인트 교체
 ENTRYPOINT ["/entrypoint.sh"]
