@@ -10,6 +10,13 @@ services:
       - ../nginx/logs:/var/log/nginx
       # nginx 컨테이너 제어 (reopen 명령)
       - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - TZ=Asia/Seoul
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
     networks:
       - 8llow8llowme-net
 
