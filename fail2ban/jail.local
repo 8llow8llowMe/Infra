@@ -4,9 +4,10 @@ loglevel = INFO
 logtarget = /var/log/fail2ban.log
 syslogsocket = auto
 
-bantime  = 86400      ; # 24시간 차단 (필요시 서비스 성격에 맞게 조정)
-findtime = 600        ; # 10분 이내 시도 기준
-maxretry = 3          ; # 기본 허용 횟수
+# 기본 값(필요시 개별 jail에서 override)
+bantime  = 604800    ; # 기본: 7일
+findtime = 600       ; # 10분
+maxretry = 3
 backend  = auto
 
 # 내부망 / 허용 IP 화이트리스트
@@ -21,6 +22,7 @@ enabled = false
 
 # 필터별 규칙 정의 (활성화된 Nginx 관련 Jail)
 
+# Access.log 기반
 # 1️. 악성 User-Agent 기반 봇 (즉시 차단)
 [nginx-badbots]
 enabled  = true
@@ -49,7 +51,7 @@ maxretry = 1
 findtime = 300
 bantime  = 604800
 
-# 4. 짧은 시간 내 에러 폭주 감지
+# 4. 짧은 시간 내 에러 폭주 감지 (짧은 시간 다수 4xx)
 [nginx-errburst]
 enabled  = true
 filter   = nginx-errburst
@@ -57,3 +59,23 @@ logpath  = /var/log/nginx/access.log
 maxretry = 15
 findtime = 60
 bantime  = 86400
+
+# Error.log 기반
+# 5. .env 시도 (가장 위험한 시도 — 즉시 밴)
+[nginx-envscan]
+enabled  = true
+filter   = nginx-envscan
+port     = http,https
+logpath  = /var/log/nginx/error.log
+maxretry = 1
+findtime = 60
+bantime  = 604800
+
+# 6. error log - 일반적인 파일 not found / open failed 패턴 (경로 스캐너)
+[nginx-errorpaths]
+enabled  = true
+filter   = nginx-errorpaths
+logpath  = /var/log/nginx/error.log
+maxretry = 2
+findtime = 60
+bantime  = 604800
