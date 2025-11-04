@@ -1,0 +1,51 @@
+services:
+  # Redis Node 2
+  redis:
+    build:
+      context: .
+      dockerfile: redis.Dockerfile
+    image: redis-custom:8.0.5
+    container_name: redis-node2
+    restart: always
+    entrypoint: ["sh", "/usr/local/bin/docker-entrypoint-redis.sh"]
+    volumes:
+      - ./data:/data
+      - ./redis-slave.conf:/usr/local/etc/redis/redis.conf
+      - ./docker-entrypoint-redis.sh:/usr/local/bin/docker-entrypoint-redis.sh
+    ports:
+      - "6379:6379"
+    env_file:
+      - .env
+    environment:
+      - TZ=Asia/Seoul
+      - REDIS_MASTER_PASSWORD=${REDIS_MASTER_PASSWORD}
+    networks:
+      - 8llow8llowme-net
+
+  # Sentinel Node 2
+  sentinel:
+    build:
+      context: .
+      dockerfile: redis.Dockerfile
+    image: redis-custom:8.0.5
+    container_name: redis-sentinel-node2
+    restart: always
+    entrypoint: ["sh", "/usr/local/bin/docker-entrypoint-sentinel.sh"]
+    volumes:
+      - ./sentinel.conf:/etc/redis/sentinel.conf
+      - ./docker-entrypoint-sentinel.sh:/usr/local/bin/docker-entrypoint-sentinel.sh
+    ports:
+      - "26379:26379"
+    env_file:
+      - .env
+    environment:
+      - TZ=Asia/Seoul
+      - REDIS_MASTER_PASSWORD=${REDIS_MASTER_PASSWORD}
+    networks:
+      - 8llow8llowme-net
+
+networks:
+  8llow8llowme-net:
+    name: 8llow8llowme-net
+    driver: bridge
+
