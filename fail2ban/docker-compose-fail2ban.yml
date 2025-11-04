@@ -18,10 +18,11 @@ services:
         max-size: "50m"
         max-file: "3"
     healthcheck:
-      test: ["CMD", "/healthcheck.sh"]
+      test: ["CMD", "sh", "-c", "/fail2ban-healthcheck.sh"]
       interval: 30s
       timeout: 10s
-      retries: 10
+      retries: 5
+      start_period: 60s
     networks:
       - 8llow8llowme-net
 
