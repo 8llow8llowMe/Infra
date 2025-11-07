@@ -1,0 +1,28 @@
+services:
+  jenkins-agent:
+    container_name: jenkins-agent
+    restart: always
+    build:
+      context: .
+      dockerfile: jenkins-agent.Dockerfile
+    environment:
+      # Jenkins Master 연결 정보
+      - JENKINS_URL=${JENKINS_URL:-http://deploy-server:49999}
+      - JENKINS_SECRET=${JENKINS_AGENT_SECRET}
+      - JENKINS_AGENT_NAME=${JENKINS_AGENT_NAME:-jenkins-agent}
+      - JENKINS_AGENT_WORKDIR=/home/jenkins/agent
+    volumes:
+      - ./jenkins-agent:/home/jenkins/agent         # Agent 작업 디렉토리
+      - /usr/bin/docker:/usr/bin/docker             # 호스트 Docker CLI 공유
+      - /var/run/docker.sock:/var/run/docker.sock   # 호스트 Docker 데몬 공유
+      # - /home/projects:/home/jenkins/projects     # 프로젝트별 추가 마운트 (옵션)
+    networks:
+      - 8llow8llowme-net
+    depends_on:
+      - jenkins-master   # Master 컨테이너 준비 후 실행
+
+networks:
+  8llow8llowme-net:
+    name: 8llow8llowme-net
+    driver: bridge
+    external: true

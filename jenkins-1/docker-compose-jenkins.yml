@@ -1,0 +1,21 @@
+services:
+  jenkins:
+    container_name: jenkins
+    restart: always
+    build:
+      context: .
+      dockerfile: jenkins.Dockerfile
+    ports:
+      - "49999:8080"     # Jenkins Web UI
+      - "50000:50000"    # JNLP Agent 통신 포트
+    volumes:
+      - ./jenkins:/var/jenkins_home              # Jenkins 데이터 볼륨
+      - /usr/bin/docker:/usr/bin/docker          # 호스트 Docker CLI 공유
+      - /var/run/docker.sock:/var/run/docker.sock # 호스트 Docker 데몬 소켓
+    networks:
+      - 8llow8llowme-net
+
+networks:
+  8llow8llowme-net:
+    name: 8llow8llowme-net
+    driver: bridge
