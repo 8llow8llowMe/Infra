@@ -1,0 +1,28 @@
+services:
+  jenkins-agent:
+    image: jenkins-agent-custom:latest
+    container_name: jenkins-agent
+    restart: always
+    build:
+      context: .
+      dockerfile: jenkins-agent.Dockerfile
+    env_file:
+      - .env
+    environment:
+      # Jenkins Master 연결 정보
+      - JENKINS_URL=${JENKINS_URL}
+      - JENKINS_AGENT_NAME=${JENKINS_AGENT_NAME}
+      - JENKINS_AGENT_SECRET=${JENKINS_AGENT_SECRET}
+    volumes:
+      - ./jenkins-agent:/home/jenkins/agent # Agent 작업 디렉토리
+      - /usr/bin/docker:/usr/bin/docker # 호스트 Docker CLI 공유
+      - /var/run/docker.sock:/var/run/docker.sock # 호스트 Docker 데몬 공유
+      - /usr/libexec/docker/cli-plugins:/usr/libexec/docker/cli-plugins # 호스트의 buildx/compose 플러그인 공유
+      # - /home/projects:/home/jenkins/projects # 프로젝트별 추가 마운트 (옵션)
+    networks:
+      - 8llow8llowme-net
+
+networks:
+  8llow8llowme-net:
+    name: 8llow8llowme-net
+    driver: bridge
