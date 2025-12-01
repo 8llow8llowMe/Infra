@@ -2,23 +2,25 @@ services:
   certbot:
     image: certbot/certbot:latest
     container_name: certbot
+    restart: always
     volumes:
       - ./letsencrypt:/etc/letsencrypt
       - ./logs:/var/log/letsencrypt
       - ./webroot:/var/www/certbot
-      # Host의 Docker 제어 권한 부여 (nginx reload 위해 필요)
-      # certbot이 인증서 갱신 후 직접 `docker exec nginx nginx -s reload` 실행 가능
-      - /var/run/docker.sock:/var/run/docker.sock # docker 제어 권한
+      # docker exec 사용할 수 있도록 docker CLI + sock 바인드
+      - /usr/bin/docker:/usr/bin/docker   
+      - /var/run/docker.sock:/var/run/docker.sock
+
     entrypoint: >
       sh -c '
         trap exit TERM;
 
-        # 기본 DH 길이는 2048bit, 환경변수 STRONG_DH=1 이면 4096bit 사용
         DH_BITS=${STRONG_DH:+4096}
         DH_BITS=${DH_BITS:-2048}
 
         while :; do
-          # 필요한 SSL 설정 파일이 없으면 자동 생성
+
+          # SSL 설정 파일 생성
           if [ ! -f /etc/letsencrypt/options-ssl-nginx.conf ]; then
             echo "[certbot] options-ssl-nginx.conf 생성";
             curl -s https://raw.githubusercontent.com/certbot/certbot/main/certbot-nginx/src/certbot_nginx/_internal/tls_configs/options-ssl-nginx.conf \
@@ -30,15 +32,19 @@ services:
             openssl dhparam -out /etc/letsencrypt/ssl-dhparams.pem $DH_BITS;
           fi
 
-          # 인증서 갱신
-          certbot renew --webroot -w /var/www/certbot --quiet \
-            --deploy-hook "docker exec nginx nginx -s reload";
+          echo "[certbot] 인증서 갱신 시도 시작"
+          
+          certbot renew \
+            --webroot -w /var/www/certbot \
+            --quiet \
+            --disable-hook-validation \
+            --deploy-hook "docker exec nginx nginx -s reload"
 
-          sleep 12h & wait $${!};
+          echo "[certbot] 갱신 작업 종료 → 12시간 대기"
+          sleep 12h;
         done;
       '
 
-  # webroot 공유 볼륨 (Nginx에서 인증서 검증용으로 사용)
   certbot-webroot:
     image: nginx:alpine
     container_name: certbot-webroot
