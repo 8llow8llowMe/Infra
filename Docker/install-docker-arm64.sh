@@ -1,36 +1,165 @@
 #!/bin/bash
+# install-docker-arm64.sh - Ubuntu 서버(ARM64)에 Docker Engine 및 Docker Compose 설치
+# 지원: Ubuntu 20.04, 22.04, 24.04 / 아키텍처: arm64 전용
 
-# 기존 도커 패키지 제거 (이전 버전이 설치된 경우)
-sudo apt-get remove -y docker docker-engine docker.io containerd runc
+set -e
 
-# 필수 패키지 설치
-sudo apt-get update
-sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
+echo "========================================="
+echo "Docker Engine 설치 스크립트 (ARM64)"
+echo "========================================="
+echo ""
 
-# 도커 GPG 키 추가
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+# ═══════════════════════════════════════════════════════════════
+# 사전 검사
+# ═══════════════════════════════════════════════════════════════
 
-# [중요] ARM64 아키텍처에 맞게 저장소 등록
-echo "deb [arch=arm64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+# root 권한 확인
+if [ "$EUID" -ne 0 ]; then
+    echo "root 권한이 필요합니다."
+    echo "다음 명령으로 실행하세요: sudo ./install-docker-arm64.sh"
+    exit 1
+fi
 
-# 도커 및 컴포넌트 설치
-sudo apt-get update
-sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+# Ubuntu 확인
+if ! grep -qi "ubuntu" /etc/os-release 2>/dev/null; then
+    echo "이 스크립트는 Ubuntu 전용입니다."
+    exit 1
+fi
 
-# 도커 컴포즈 ARM64 바이너리 다운로드
-DOCKER_COMPOSE_VERSION=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep tag_name | cut -d '"' -f 4)
-sudo curl -L "https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+# ARM64 아키텍처 확인
+ARCH=$(dpkg --print-architecture)
+if [ "$ARCH" != "arm64" ]; then
+    echo "이 스크립트는 ARM64 전용입니다. 현재 아키텍처: $ARCH"
+    echo "일반(amd64) 서버는 install-docker.sh 를 사용하세요."
+    exit 1
+fi
 
-# 실행 권한 부여
-sudo chmod +x /usr/local/bin/docker-compose
+# Ubuntu 버전 확인
+UBUNTU_VERSION=$(lsb_release -rs 2>/dev/null || grep VERSION_ID /etc/os-release | cut -d'"' -f2)
+echo "Ubuntu 버전: $UBUNTU_VERSION"
+echo "아키텍처: $ARCH (arm64)"
 
-# 현재 사용자 도커 그룹 추가
-sudo usermod -aG docker $USER
-newgrp docker
+# ═══════════════════════════════════════════════════════════════
+# 1. 기존 Docker 패키지 제거
+# ═══════════════════════════════════════════════════════════════
+echo ""
+echo "[1/6] 기존 Docker 패키지 제거..."
 
-# 도커 재시작
-sudo systemctl restart docker
+for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do
+    apt-get remove -y $pkg 2>/dev/null || true
+done
 
-# 버전 확인
+echo "기존 패키지 제거 완료"
+
+# ═══════════════════════════════════════════════════════════════
+# 2. 필수 패키지 설치
+# ═══════════════════════════════════════════════════════════════
+echo ""
+echo "[2/6] 필수 패키지 설치..."
+
+apt-get update
+apt-get install -y \
+    ca-certificates \
+    curl \
+    gnupg \
+    lsb-release
+
+echo "필수 패키지 설치 완료"
+
+# ═══════════════════════════════════════════════════════════════
+# 3. Docker 공식 GPG 키 추가
+# ═══════════════════════════════════════════════════════════════
+echo ""
+echo "[3/6] Docker GPG 키 추가..."
+
+rm -f /etc/apt/keyrings/docker.gpg
+install -m 0755 -d /etc/apt/keyrings
+
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+chmod a+r /etc/apt/keyrings/docker.gpg
+
+echo "GPG 키 추가 완료"
+
+# ═══════════════════════════════════════════════════════════════
+# 4. Docker 저장소 추가 (arm64)
+# ═══════════════════════════════════════════════════════════════
+echo ""
+echo "[4/6] Docker APT 저장소 추가 (arm64)..."
+
+CODENAME=$(. /etc/os-release && echo "$VERSION_CODENAME")
+echo "코드네임: $CODENAME"
+
+echo \
+  "deb [arch=arm64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  $CODENAME stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+echo "저장소 추가 완료"
+
+# ═══════════════════════════════════════════════════════════════
+# 5. Docker Engine 설치
+# ═══════════════════════════════════════════════════════════════
+echo ""
+echo "[5/6] Docker Engine 설치..."
+
+apt-get update
+apt-get install -y \
+    docker-ce \
+    docker-ce-cli \
+    containerd.io \
+    docker-buildx-plugin \
+    docker-compose-plugin
+
+echo "Docker Engine 설치 완료"
+
+# ═══════════════════════════════════════════════════════════════
+# 6. Docker 서비스 활성화 및 시작
+# ═══════════════════════════════════════════════════════════════
+echo ""
+echo "[6/6] Docker 서비스 설정..."
+
+systemctl enable docker
+systemctl enable containerd
+systemctl start docker
+
+echo "Docker 서비스 시작 완료"
+
+# ═══════════════════════════════════════════════════════════════
+# 설치 확인
+# ═══════════════════════════════════════════════════════════════
+echo ""
+echo "========================================="
+echo "설치 확인"
+echo "========================================="
+
+echo ""
+echo "--- Docker 버전 ---"
 docker --version
-docker-compose --version
+
+echo ""
+echo "--- Docker Compose 버전 ---"
+docker compose version
+
+echo ""
+echo "--- Docker 서비스 상태 ---"
+systemctl is-active docker
+
+echo ""
+echo "--- Docker 테스트 (hello-world) ---"
+docker run --rm hello-world 2>/dev/null | head -5
+
+echo ""
+echo "========================================="
+echo "Docker 설치 완료! (ARM64)"
+echo "========================================="
+echo ""
+echo "다음 단계:"
+echo "  1. 현재 사용자를 docker 그룹에 추가:"
+echo "     sudo ./setup-docker-user.sh"
+echo "     또는: sudo usermod -aG docker \$USER"
+echo ""
+echo "  2. 그룹 변경 적용 (재로그인 또는):"
+echo "     newgrp docker"
+echo ""
+echo "  3. docker 명령 테스트:"
+echo "     docker ps"
+echo ""
