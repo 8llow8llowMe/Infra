@@ -9,27 +9,30 @@ services:
       - '80:80'
       - '443:443'
     volumes:
-      # 메인 설정 및 가상호스트 설정
+      # 1. 메인 설정 및 도메인별 가상 호스트 설정
       - ./nginx.conf:/etc/nginx/nginx.conf
       - ./conf.d:/etc/nginx/conf.d
 
-      # 로그 공유 — Fail2Ban 및 logrotate 컨테이너에서 참조
+      # 2. 로그 디렉터리 공유
+      # Fail2Ban, logrotate, Filebeat 등 다른 인프라 컨테이너가 이 로그를 참조합니다.
       - ./logs:/var/log/nginx
 
-      # Certbot (HTTP-01 챌린지 및 인증서 공유)
+      # 3. Certbot 인증서 및 ACME 챌린지 경로 공유
       - ../certbot/webroot:/var/www/certbot
       - ../certbot/letsencrypt:/etc/letsencrypt
     environment:
       - TZ=Asia/Seoul
     logging:
-      driver: 'json-file' # Docker 기본 로깅 (stdout/stderr 수집)
+      # 4. Docker 컨테이너 로그 보존 정책
+      driver: 'json-file'
       options:
-        max-size: '50m'  # 로그 파일 50MB 초과 시 자동 롤링
-        max-file: '3'     # 최대 3개 파일까지 보관
+        max-size: '50m'
+        max-file: '3'
     networks:
       - 8llow8llowme-net
 
 networks:
   8llow8llowme-net:
+    # 5. 외부 서비스와 연결되는 공용 브리지 네트워크
     name: 8llow8llowme-net
     driver: bridge
