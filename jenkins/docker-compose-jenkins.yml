@@ -22,8 +22,8 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  jenkins-builder:
-    container_name: jenkins-builder
+  jenkins-builder-agent:
+    container_name: jenkins-builder-agent
     restart: unless-stopped
     depends_on:
       - jenkins-controller
@@ -36,10 +36,10 @@ services:
       JENKINS_AGENT_SECRET: ${JENKINS_BUILDER_SECRET:-change-me-after-node-created}
       JENKINS_AGENT_WORKDIR: /home/jenkins/agent
     volumes:
-      - ./jenkins-builder:/home/jenkins/agent
-      - jenkins-builder-gradle:/home/jenkins/.gradle
-      - jenkins-builder-npm:/home/jenkins/.npm
-      - jenkins-builder-pnpm:/home/jenkins/.local/share/pnpm
+      - ./jenkins-builder-agent:/home/jenkins/agent
+      - jenkins-builder-agent-gradle:/home/jenkins/.gradle
+      - jenkins-builder-agent-npm:/home/jenkins/.npm
+      - jenkins-builder-agent-pnpm:/home/jenkins/.local/share/pnpm
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - 8llow8llowme-net
@@ -55,6 +55,6 @@ networks:
     driver: bridge
 
 volumes:
-  jenkins-builder-gradle:
-  jenkins-builder-npm:
-  jenkins-builder-pnpm:
+  jenkins-builder-agent-gradle:
+  jenkins-builder-agent-npm:
+  jenkins-builder-agent-pnpm:
