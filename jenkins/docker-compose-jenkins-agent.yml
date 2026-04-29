@@ -1,26 +1,31 @@
 services:
-  jenkins-agent:
+  # 원격 서버에 배치하는 배포 전용 Jenkins inbound agent입니다.
+  # 미니PC build agent는 docker-compose-jenkins.yml의 jenkins-builder-agent를 사용합니다.
+  jenkins-deploy-agent:
     image: jenkins-agent-custom:latest
-    container_name: jenkins-agent
-    restart: always
+    container_name: jenkins-deploy-agent
+    restart: unless-stopped
     build:
       context: .
       dockerfile: jenkins-agent.Dockerfile
     env_file:
       - .env
     environment:
-      # Jenkins Master 연결 정보
-      - JENKINS_URL=${JENKINS_URL}
-      - JENKINS_AGENT_NAME=${JENKINS_AGENT_NAME}
-      - JENKINS_AGENT_SECRET=${JENKINS_AGENT_SECRET}
+      JENKINS_URL: ${JENKINS_URL}
+      JENKINS_AGENT_NAME: ${JENKINS_DEPLOY_AGENT_NAME:-backend-1-deploy}
+      JENKINS_AGENT_SECRET: ${JENKINS_DEPLOY_AGENT_SECRET}
+      JENKINS_AGENT_WORKDIR: /home/jenkins/agent
     volumes:
-      - ./jenkins-agent:/home/jenkins/agent # Agent 작업 디렉토리
-      - /usr/bin/docker:/usr/bin/docker # 호스트 Docker CLI 공유
-      - /var/run/docker.sock:/var/run/docker.sock # 호스트 Docker 데몬 공유
-      - /usr/libexec/docker/cli-plugins:/usr/libexec/docker/cli-plugins # 호스트의 buildx/compose 플러그인 공유
-      # - /home/projects:/home/jenkins/projects # 프로젝트별 추가 마운트 (옵션)
+      - ./jenkins-deploy-agent:/home/jenkins/agent
+      - /var/run/docker.sock:/var/run/docker.sock
+      # - /home/projects:/home/jenkins/projects
     networks:
       - 8llow8llowme-net
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   8llow8llowme-net:
