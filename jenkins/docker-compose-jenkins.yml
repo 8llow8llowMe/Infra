@@ -6,11 +6,11 @@ services:
       context: .
       dockerfile: jenkins.Dockerfile
     environment:
-      JENKINS_OPTS: ${JENKINS_OPTS:-}
-      JAVA_OPTS: ${JENKINS_CONTROLLER_JAVA_OPTS:--Xms512m -Xmx2048m}
+      JENKINS_OPTS: ${JENKINS_OPTS}
+      JAVA_OPTS: ${JENKINS_CONTROLLER_JAVA_OPTS}
     ports:
-      - "${JENKINS_WEB_PORT:-49999}:8080"
-      - "${JENKINS_AGENT_PORT:-50000}:50000"
+      - "${JENKINS_WEB_PORT}:8080"
+      - "${JENKINS_AGENT_PORT}:50000"
     volumes:
       - ./jenkins-home:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
@@ -31,9 +31,9 @@ services:
       context: .
       dockerfile: jenkins-agent.Dockerfile
     environment:
-      JENKINS_URL: ${JENKINS_URL:-http://jenkins-controller:8080}
-      JENKINS_AGENT_NAME: ${JENKINS_BUILDER_NAME:-minipc-builder}
-      JENKINS_AGENT_SECRET: ${JENKINS_BUILDER_SECRET:-change-me-after-node-created}
+      JENKINS_URL: ${JENKINS_URL}
+      JENKINS_AGENT_NAME: ${JENKINS_BUILDER_NAME}
+      JENKINS_AGENT_SECRET: ${JENKINS_BUILDER_SECRET}
       JENKINS_AGENT_WORKDIR: /home/jenkins/agent
     volumes:
       - ./jenkins-builder-agent:/home/jenkins/agent

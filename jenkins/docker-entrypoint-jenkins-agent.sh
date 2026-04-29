@@ -5,7 +5,6 @@ set -euo pipefail
 
 SOCK="/var/run/docker.sock"
 LOG_FILE="/tmp/jenkins-agent-entrypoint.log"
-AGENT_DIR="${JENKINS_AGENT_WORKDIR:-/home/jenkins/agent}"
 
 log() {
   echo "[$(date --iso-8601=seconds)] $*" | tee -a "$LOG_FILE"
@@ -13,7 +12,7 @@ log() {
 
 require_env() {
   local name="$1"
-  if [ -z "${!name:-}" ]; then
+  if [ -z "${!name+x}" ] || [ -z "${!name}" ]; then
     log "ERROR missing required environment variable: $name"
     exit 1
   fi
@@ -49,6 +48,9 @@ prepare_workdir() {
 require_env JENKINS_URL
 require_env JENKINS_AGENT_NAME
 require_env JENKINS_AGENT_SECRET
+require_env JENKINS_AGENT_WORKDIR
+
+AGENT_DIR="$JENKINS_AGENT_WORKDIR"
 
 export JAVA_HOME=/opt/java/openjdk21
 export PATH="${JAVA_HOME}/bin:${PATH}"

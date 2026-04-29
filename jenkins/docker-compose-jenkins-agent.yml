@@ -12,7 +12,7 @@ services:
       - .env
     environment:
       JENKINS_URL: ${JENKINS_URL}
-      JENKINS_AGENT_NAME: ${JENKINS_DEPLOY_AGENT_NAME:-backend-1-deploy}
+      JENKINS_AGENT_NAME: ${JENKINS_DEPLOY_AGENT_NAME}
       JENKINS_AGENT_SECRET: ${JENKINS_DEPLOY_AGENT_SECRET}
       JENKINS_AGENT_WORKDIR: /home/jenkins/agent
     volumes:
