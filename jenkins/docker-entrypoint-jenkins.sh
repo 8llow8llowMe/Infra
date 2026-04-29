@@ -1,30 +1,41 @@
-#!/bin/bash
-# Jenkins Master Entrypoint Script
-# - docker.sock GID 자동 동기화 (호스트 Docker 접근용)
-# - Jenkins를 jenkins 사용자로 실행
+#!/usr/bin/env bash
+# docker.sock 권한을 맞춘 뒤 Jenkins를 jenkins 사용자로 실행합니다.
 
-set -e
-LOG_FILE="/tmp/jenkins-entrypoint.log"
+set -euo pipefail
+
 SOCK="/var/run/docker.sock"
+LOG_FILE="/tmp/jenkins-entrypoint.log"
 
-echo "[$(date)] [INFO] Jenkins Entrypoint 시작" | tee -a "$LOG_FILE"
+log() {
+  echo "[$(date --iso-8601=seconds)] $*" | tee -a "$LOG_FILE"
+}
 
-# 1. docker.sock GID 자동 동기화
-if [ -S "$SOCK" ]; then
-    GID=$(stat -c '%g' "$SOCK")
-    groupadd -for -g "$GID" docker
-    usermod -aG docker jenkins
-    echo "[$(date)] [INFO] docker.sock GID($GID) 동기화 완료" | tee -a "$LOG_FILE"
-else
-    echo "[$(date)] [WARN] docker.sock 파일이 존재하지 않습니다." | tee -a "$LOG_FILE"
-fi
+sync_docker_group() {
+  if [ ! -S "$SOCK" ]; then
+    log "WARN docker socket not found: $SOCK"
+    return
+  fi
 
-# 2. Java 환경 변수 설정
+  local sock_gid group_name
+  sock_gid="$(stat -c '%g' "$SOCK")"
+  group_name="$(getent group "$sock_gid" | cut -d: -f1 || true)"
+
+  if [ -z "$group_name" ]; then
+    group_name="dockersock"
+    if getent group "$group_name" >/dev/null 2>&1; then
+      group_name="dockersock_${sock_gid}"
+    fi
+    groupadd -g "$sock_gid" "$group_name"
+  fi
+
+  usermod -aG "$group_name" jenkins
+  log "INFO docker socket group synced: ${group_name}(${sock_gid})"
+}
+
 export JAVA_HOME=/opt/java/openjdk21
-export PATH=$JAVA_HOME/bin:$PATH
+export PATH="${JAVA_HOME}/bin:${PATH}"
 
-echo "[$(date)] [INFO] JAVA_HOME=$JAVA_HOME" | tee -a "$LOG_FILE"
+sync_docker_group
+log "INFO starting Jenkins controller"
 
-# 3. Jenkins 프로세스 실행
-echo "[$(date)] [INFO] Jenkins 프로세스 시작" | tee -a "$LOG_FILE"
 exec gosu jenkins /usr/local/bin/jenkins.sh "$@"

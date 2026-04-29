@@ -1,21 +1,60 @@
 services:
-  jenkins:
-    container_name: jenkins
-    restart: always
+  jenkins-controller:
+    container_name: jenkins-controller
+    restart: unless-stopped
     build:
       context: .
       dockerfile: jenkins.Dockerfile
+    environment:
+      JENKINS_OPTS: ${JENKINS_OPTS:-}
+      JAVA_OPTS: ${JENKINS_CONTROLLER_JAVA_OPTS:--Xms512m -Xmx2048m}
     ports:
-      - "49999:8080"     # Jenkins Web UI
-      - "50000:50000"    # JNLP Agent 통신 포트
+      - "${JENKINS_WEB_PORT:-49999}:8080"
+      - "${JENKINS_AGENT_PORT:-50000}:50000"
     volumes:
-      - ./jenkins:/var/jenkins_home              # Jenkins 데이터 볼륨
-      - /usr/bin/docker:/usr/bin/docker          # 호스트 Docker CLI 공유
-      - /var/run/docker.sock:/var/run/docker.sock # 호스트 Docker 데몬 소켓
+      - ./jenkins-home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - 8llow8llowme-net
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  jenkins-builder:
+    container_name: jenkins-builder
+    restart: unless-stopped
+    depends_on:
+      - jenkins-controller
+    build:
+      context: .
+      dockerfile: jenkins-agent.Dockerfile
+    environment:
+      JENKINS_URL: ${JENKINS_URL:-http://jenkins-controller:8080}
+      JENKINS_AGENT_NAME: ${JENKINS_BUILDER_NAME:-minipc-builder}
+      JENKINS_AGENT_SECRET: ${JENKINS_BUILDER_SECRET:-change-me-after-node-created}
+      JENKINS_AGENT_WORKDIR: /home/jenkins/agent
+    volumes:
+      - ./jenkins-builder:/home/jenkins/agent
+      - jenkins-builder-gradle:/home/jenkins/.gradle
+      - jenkins-builder-npm:/home/jenkins/.npm
+      - jenkins-builder-pnpm:/home/jenkins/.local/share/pnpm
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - 8llow8llowme-net
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   8llow8llowme-net:
     name: 8llow8llowme-net
     driver: bridge
+
+volumes:
+  jenkins-builder-gradle:
+  jenkins-builder-npm:
+  jenkins-builder-pnpm:

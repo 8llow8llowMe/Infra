@@ -1,0 +1,4 @@
+.env
+jenkins-home/
+jenkins-builder/
+update-center-rootCAs/
