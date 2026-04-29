@@ -1,0 +1,32 @@
+services:
+  vault:
+    image: ${VAULT_IMAGE:-hashicorp/vault:1.18}
+    container_name: vault
+    restart: unless-stopped
+    cap_add:
+      - IPC_LOCK
+    environment:
+      VAULT_ADDR: ${VAULT_ADDR:-http://127.0.0.1:8200}
+      VAULT_API_ADDR: ${VAULT_API_ADDR:-http://127.0.0.1:8200}
+    ports:
+      - "${VAULT_PORT:-8200}:8200"
+    volumes:
+      - ./vault.hcl:/vault/config/vault.hcl:ro
+      - ./docker-entrypoint-vault.sh:/usr/local/bin/docker-entrypoint-vault.sh:ro
+      - ./data:/vault/file
+      - ./logs:/vault/logs
+    entrypoint:
+      - sh
+      - /usr/local/bin/docker-entrypoint-vault.sh
+    networks:
+      - 8llow8llowme-net
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  8llow8llowme-net:
+    name: 8llow8llowme-net
+    driver: bridge
