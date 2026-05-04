@@ -1,14 +1,14 @@
 #!/bin/sh
 set -eu
 
-# 1. Runtime defaults
+# 1. 실행 기본값을 설정합니다.
 WEBROOT="${CERTBOT_WEBROOT:-/var/www/certbot}"
 RENEW_INTERVAL="${CERTBOT_RENEW_INTERVAL:-12h}"
 NGINX_CONTAINER="${NGINX_CONTAINER:-nginx}"
 DH_BITS="${STRONG_DH:+4096}"
 DH_BITS="${DH_BITS:-2048}"
 
-# 2. Reload Nginx after a certificate was actually renewed
+# 2. 인증서가 실제로 갱신되면 Nginx를 reload합니다.
 reload_nginx() {
   if ! command -v docker >/dev/null 2>&1; then
     echo "[certbot] docker CLI not found; nginx reload skipped" >&2
@@ -19,13 +19,13 @@ reload_nginx() {
   docker exec "${NGINX_CONTAINER}" nginx -s reload
 }
 
-# 3. Deploy-hook entrypoint
+# 3. Certbot deploy-hook에서 호출되는 진입점입니다.
 if [ "${1:-}" = "reload" ]; then
   reload_nginx
   exit $?
 fi
 
-# 4. Create TLS helper files required by Nginx SSL server blocks
+# 4. Nginx SSL server block에 필요한 TLS 보조 파일을 생성합니다.
 ensure_tls_defaults() {
   if [ ! -f /etc/letsencrypt/options-ssl-nginx.conf ]; then
     echo "[certbot] creating options-ssl-nginx.conf"
@@ -40,10 +40,10 @@ ensure_tls_defaults() {
   fi
 }
 
-# 5. Stop cleanly when Docker asks the container to exit
+# 5. Docker가 컨테이너 종료를 요청하면 안전하게 종료합니다.
 trap 'echo "[certbot] stopping"; exit 0' TERM INT
 
-# 6. Run certbot renewal checks forever
+# 6. Certbot 인증서 갱신 확인을 주기적으로 실행합니다.
 while :; do
   ensure_tls_defaults
 
@@ -55,7 +55,7 @@ while :; do
     --deploy-hook "/usr/local/bin/renew-loop.sh reload"
   echo "[certbot] renewal check finished; sleeping ${RENEW_INTERVAL}"
 
-  # 7. Sleep in a signal-friendly way
+  # 7. 종료 신호를 받을 수 있도록 sleep을 별도 프로세스로 실행합니다.
   sleep "${RENEW_INTERVAL}" &
   wait "$!"
 done
