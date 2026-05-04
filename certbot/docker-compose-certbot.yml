@@ -7,53 +7,12 @@ services:
       - ./letsencrypt:/etc/letsencrypt
       - ./logs:/var/log/letsencrypt
       - ./webroot:/var/www/certbot
-      # docker exec 사용할 수 있도록 docker CLI + sock 바인드
-      - /usr/bin/docker:/usr/bin/docker   
+      - ./renew-loop.sh:/usr/local/bin/renew-loop.sh:ro
+      - /usr/bin/docker:/usr/bin/docker:ro
       - /var/run/docker.sock:/var/run/docker.sock
-
-    entrypoint: >
-      sh -c '
-        trap exit TERM;
-
-        DH_BITS=${STRONG_DH:+4096}
-        DH_BITS=${DH_BITS:-2048}
-
-        while :; do
-
-          # SSL 설정 파일 생성
-          if [ ! -f /etc/letsencrypt/options-ssl-nginx.conf ]; then
-            echo "[certbot] options-ssl-nginx.conf 생성";
-            curl -s https://raw.githubusercontent.com/certbot/certbot/main/certbot-nginx/src/certbot_nginx/_internal/tls_configs/options-ssl-nginx.conf \
-              -o /etc/letsencrypt/options-ssl-nginx.conf;
-          fi
-
-          if [ ! -f /etc/letsencrypt/ssl-dhparams.pem ]; then
-            echo "[certbot] ssl-dhparams.pem 생성 (${DH_BITS}bit)";
-            openssl dhparam -out /etc/letsencrypt/ssl-dhparams.pem $DH_BITS;
-          fi
-
-          echo "[certbot] 인증서 갱신 시도 시작"
-          
-          certbot renew \
-            --webroot -w /var/www/certbot \
-            --quiet \
-            --disable-hook-validation \
-            --deploy-hook "docker exec nginx nginx -s reload"
-
-          echo "[certbot] 갱신 작업 종료 → 12시간 대기"
-          sleep 12h;
-        done;
-      '
-
-  certbot-webroot:
-    image: nginx:alpine
-    container_name: certbot-webroot
-    volumes:
-      - ./webroot:/var/www/certbot
-    networks:
-      - 8llow8llowme-net
-
-networks:
-  8llow8llowme-net:
-    name: 8llow8llowme-net
-    driver: bridge
+    environment:
+      CERTBOT_WEBROOT: /var/www/certbot
+      CERTBOT_RENEW_INTERVAL: 12h
+      NGINX_CONTAINER: nginx
+      STRONG_DH: ${STRONG_DH:-}
+    entrypoint: ['/bin/sh', '/usr/local/bin/renew-loop.sh']
