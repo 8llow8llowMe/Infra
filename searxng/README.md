@@ -43,9 +43,10 @@ cp .env.example .env
 | `SEARXNG_CONTAINER_PORT` | 컨테이너 포트 | `8080` |
 | `SEARXNG_BASE_URL` | SearXNG 외부 기준 URL | `http://localhost:8080/` |
 | `TZ` | 컨테이너 타임존 | `Asia/Seoul` |
-| `DOCKER_NETWORK_NAME` | Docker 네트워크 이름 | `8llow8llowme-net` |
 
 내부망에서만 쓸 경우 `SEARXNG_BASE_URL=http://<ai-host-ip>:8080/` 정도로 두면 됩니다. 외부 공개용으로 운영할 경우 HTTPS reverse proxy 주소로 바꿉니다.
+
+Docker 네트워크 이름은 compose에서 `8llow8llowme-net`으로 고정합니다.
 
 ## settings.yml
 

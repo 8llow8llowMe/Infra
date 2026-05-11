@@ -91,11 +91,11 @@ Compose 파일에는 기본값을 넣지 않습니다. 실행 전에 `.env`를 �
 | `AMD_GPU_GROUP` | GPU 접근 그룹 | `video` |
 | `HSA_OVERRIDE_GFX_VERSION` | AMD iGPU 테스트용 GFX override | `11.0.0` |
 | `TZ` | 컨테이너 타임존 | `Asia/Seoul` |
-| `DOCKER_NETWORK_NAME` | Docker 네트워크 이름 | `8llow8llowme-net` |
 
 `WEBUI_SECRET_KEY`는 운영 전에 반드시 바꿉니다.
 
 Docker json 로그는 compose에서 `max-size: "10m"`, `max-file: "3"`으로 고정합니다.
+Docker 네트워크 이름은 compose에서 `8llow8llowme-net`으로 고정합니다.
 
 SearXNG를 붙여 웹 검색을 사용하려면 [README-SEARXNG.md](README-SEARXNG.md)를 참고합니다.
 

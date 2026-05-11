@@ -19,17 +19,10 @@ Browser
 Ollama/Open WebUI:
 
 ```env
-DOCKER_NETWORK_NAME=8llow8llowme-net
 OPEN_WEBUI_OLLAMA_BASE_URL=http://ollama:11434
 ```
 
-SearXNG:
-
-```env
-DOCKER_NETWORK_NAME=8llow8llowme-net
-```
-
-이 구성이면 Open WebUI 컨테이너에서 다음 주소로 SearXNG에 접근할 수 있습니다.
+두 compose의 Docker 네트워크 이름은 `8llow8llowme-net`으로 고정되어 있습니다. 이 구성이면 Open WebUI 컨테이너에서 다음 주소로 SearXNG에 접근할 수 있습니다.
 
 ```text
 http://searxng:8080
@@ -186,4 +179,3 @@ docker logs -f searxng
 - Open WebUI `3000`도 가능하면 VPN, SSH tunnel, Nginx 인증 뒤에 둡니다.
 - SearXNG `8080`은 내부용으로 두고 외부에 직접 열지 않는 것을 권장합니다.
 - 주가/뉴스처럼 최신성이 중요한 답변은 출처 링크를 확인합니다.
-

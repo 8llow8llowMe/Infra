@@ -44,5 +44,5 @@ services:
 
 networks:
   8llow8llowme-net:
-    name: ${DOCKER_NETWORK_NAME}
+    name: 8llow8llowme-net
     driver: bridge
