@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Prepare local Vault directories, then start Vault with mounted config.
+# Vault 데이터/로그 디렉터리를 준비하고 서버를 실행합니다.
 
 set -eu
 

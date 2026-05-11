@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
-# Idempotent-ish bootstrap for BossPickSeoul Vault paths, policies, and AppRoles.
-# Run after vault operator init/unseal and vault login.
+# BossPickSeoul용 Vault 정책과 AppRole을 초기 구성합니다.
+# 실행 시점: Vault init, unseal, login 완료 후 1회 실행합니다.
 
 set -eu
 
@@ -25,9 +25,9 @@ vault write auth/approle/role/backend-bosspickseoul \
   secret_id_num_uses="0"
 
 cat <<'EOF'
-Bootstrap complete.
+Vault 초기 구성이 완료되었습니다.
 
-Next:
+다음 값을 발급해 Jenkins/backend credential에 등록합니다.
   vault read auth/approle/role/jenkins-bosspickseoul/role-id
   vault write -f auth/approle/role/jenkins-bosspickseoul/secret-id
   vault read auth/approle/role/backend-bosspickseoul/role-id

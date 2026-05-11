@@ -22,6 +22,7 @@ vault/
 ├── docker-compose-vault.yml
 ├── vault.hcl
 ├── docker-entrypoint-vault.sh
+├── install-vault.sh
 ├── .env.example
 ├── policies/
 │   ├── jenkins-bosspickseoul.hcl
@@ -64,15 +65,24 @@ VAULT_API_ADDR=http://<ai-host-private-ip>:8200
 
 ## 실행
 
+스크립트 실행:
+
 ```bash
 cd vault
-docker compose -f docker-compose-vault.yml up -d
+sh install-vault.sh
+```
+
+직접 실행:
+
+```bash
+cd vault
+docker compose --env-file .env -f docker-compose-vault.yml up -d
 ```
 
 상태 확인:
 
 ```bash
-docker compose -f docker-compose-vault.yml ps
+docker compose --env-file .env -f docker-compose-vault.yml ps
 docker logs -f vault
 docker exec vault vault status
 ```
@@ -80,18 +90,18 @@ docker exec vault vault status
 중지:
 
 ```bash
-docker compose -f docker-compose-vault.yml down
+docker compose --env-file .env -f docker-compose-vault.yml down
 ```
 
 Compose 문법 확인:
 
 ```bash
-docker compose -f docker-compose-vault.yml config
+docker compose --env-file .env -f docker-compose-vault.yml config
 ```
 
 ## 초기화와 Unseal
 
-최초 1회 초기화합니다.
+Vault는 최초 1회 초기화가 필요합니다. 초기화를 하면 unseal key 5개와 initial root token 1개가 발급됩니다.
 
 ```bash
 docker exec -it vault vault operator init
@@ -99,7 +109,7 @@ docker exec -it vault vault operator init
 
 출력되는 unseal key와 initial root token은 오프라인 비밀 저장소에 보관합니다. Git, 메신저, 일반 노트에 남기지 않습니다.
 
-unseal:
+초기화 후에는 Vault가 sealed 상태입니다. 5개 unseal key 중 3개를 입력해 잠금을 해제합니다.
 
 ```bash
 docker exec -it vault vault operator unseal
@@ -107,13 +117,32 @@ docker exec -it vault vault operator unseal
 docker exec -it vault vault operator unseal
 ```
 
-로그인:
+상태 확인:
+
+```bash
+docker exec vault vault status
+```
+
+다음처럼 `Sealed`가 `false`이면 사용할 수 있습니다.
+
+```text
+Initialized     true
+Sealed          false
+```
+
+root token으로 로그인합니다.
 
 ```bash
 docker exec -it vault vault login
 ```
 
-컨테이너 재시작 후에는 다시 unseal이 필요합니다. 자동 unseal은 이번 구성 범위에 포함하지 않았습니다.
+컨테이너 재시작, 재생성, 서버 재부팅 후에는 다시 unseal이 필요합니다. 자동 unseal은 이번 구성 범위에 포함하지 않았습니다.
+
+주의:
+
+- `vault operator init`은 최초 1회만 실행합니다.
+- 이미 초기화된 Vault에서 다시 init을 실행하면 실패합니다.
+- `data/`를 삭제하면 기존 Vault 데이터와 키가 사라지므로 운영 중에는 삭제하지 않습니다.
 
 ## BossPickSeoul Secret Path
 
@@ -150,14 +179,23 @@ docker exec -it vault vault kv put kv/bosspickseoul/backend/prod/core/api \
 docker exec -it vault vault kv get kv/bosspickseoul/backend/prod/core/api
 ```
 
-## Policy와 AppRole
+## Bootstrap
 
 정책 파일:
 
 - `policies/jenkins-bosspickseoul.hcl`: Jenkins가 배포용 backend secret을 읽는 권한
 - `policies/backend-bosspickseoul.hcl`: backend-1 deploy/runtime 용 읽기 권한
 
-초기 bootstrap:
+실행 시점:
+
+1. Vault 컨테이너 실행
+2. `vault operator init`
+3. `vault operator unseal`
+4. `vault login`
+5. 아래 bootstrap 스크립트 실행
+6. AppRole `role_id`, `secret_id`를 Jenkins credential 또는 backend-1 deploy agent secret으로 등록
+
+초기 bootstrap은 Vault 서버를 처음 구성할 때 1회 실행합니다. policy나 AppRole 설정을 바꾼 경우에는 다시 실행해 갱신할 수 있습니다.
 
 ```bash
 docker exec -it vault sh /vault/scripts/bootstrap-bosspickseoul.sh
@@ -170,19 +208,105 @@ docker exec -it vault sh /vault/scripts/bootstrap-bosspickseoul.sh
 - Jenkins/backend policy 등록
 - `jenkins-bosspickseoul`, `backend-bosspickseoul` AppRole 생성
 
-Jenkins credential에 등록할 값 발급:
+성공하면 다음 메시지가 출력됩니다.
+
+```text
+Success! Enabled the kv-v2 secrets engine at: kv/
+Success! Enabled approle auth method at: approle/
+Success! Uploaded policy: jenkins-bosspickseoul
+Success! Uploaded policy: backend-bosspickseoul
+```
+
+이미 한 번 실행한 뒤 다시 실행하면 `kv` 또는 `approle` 활성화 메시지는 생략될 수 있습니다. policy와 AppRole은 다시 등록되어 갱신됩니다.
+
+## AppRole 발급
+
+Bootstrap 이후 Jenkins와 backend-1 deploy agent가 사용할 AppRole 값을 발급합니다.
+
+Jenkins credential에 등록할 값:
 
 ```bash
 docker exec -it vault vault read auth/approle/role/jenkins-bosspickseoul/role-id
 docker exec -it vault vault write -f auth/approle/role/jenkins-bosspickseoul/secret-id
 ```
 
-backend-1 deploy agent용 값 발급:
+backend-1 deploy agent용 값:
 
 ```bash
 docker exec -it vault vault read auth/approle/role/backend-bosspickseoul/role-id
 docker exec -it vault vault write -f auth/approle/role/backend-bosspickseoul/secret-id
 ```
+
+발급된 값은 다음처럼 관리합니다.
+
+| 값 | 저장 위치 | 용도 |
+| --- | --- | --- |
+| Jenkins `role_id` | Jenkins Credential | Vault 로그인용 |
+| Jenkins `secret_id` | Jenkins Credential | Vault 로그인용 |
+| backend `role_id` | backend-1 deploy agent secret | 필요 시 Vault 로그인용 |
+| backend `secret_id` | backend-1 deploy agent secret | 필요 시 Vault 로그인용 |
+
+`secret_id`는 비밀번호처럼 취급합니다. Git에 커밋하지 않습니다.
+
+## AppRole 로그인 테스트
+
+Jenkins용 AppRole이 실제로 Vault에 로그인할 수 있는지 테스트할 수 있습니다.
+
+먼저 `role_id`, `secret_id`를 변수로 준비합니다.
+
+```bash
+JENKINS_ROLE_ID='<발급받은-role-id>'
+JENKINS_SECRET_ID='<발급받은-secret-id>'
+```
+
+로그인 테스트:
+
+```bash
+docker exec -e JENKINS_ROLE_ID="$JENKINS_ROLE_ID" -e JENKINS_SECRET_ID="$JENKINS_SECRET_ID" vault \
+  vault write auth/approle/login role_id="$JENKINS_ROLE_ID" secret_id="$JENKINS_SECRET_ID"
+```
+
+응답에 `token`이 나오면 AppRole 로그인은 정상입니다.
+
+## Secret 저장 테스트
+
+Bootstrap 후에는 `kv` 경로에 secret을 저장할 수 있습니다.
+
+예시:
+
+```bash
+docker exec -it vault vault kv put kv/bosspickseoul/backend/dev/core/api \
+  SPRING_PROFILES_ACTIVE=dev \
+  DB_HOST=raspberrypi \
+  DB_PORT=3306 \
+  DB_USERNAME=bosspick \
+  DB_PASSWORD=change-me
+```
+
+조회:
+
+```bash
+docker exec -it vault vault kv get kv/bosspickseoul/backend/dev/core/api
+```
+
+Jenkins pipeline에서는 이 경로를 환경별로 바꿔 읽습니다.
+
+```text
+kv/bosspickseoul/backend/{env}/{group}/{service}
+```
+
+## AppRole 읽기 권한 테스트
+
+발급된 AppRole token으로 secret 읽기 권한까지 확인할 수 있습니다.
+
+```bash
+JENKINS_VAULT_TOKEN='<approle-login-token>'
+
+docker exec -e VAULT_TOKEN="$JENKINS_VAULT_TOKEN" vault \
+  vault kv get kv/bosspickseoul/backend/dev/core/api
+```
+
+secret이 조회되면 Jenkins용 policy와 AppRole 권한이 정상입니다.
 
 ## Jenkins 배포 흐름
 
