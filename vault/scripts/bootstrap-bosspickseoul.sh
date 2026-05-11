@@ -1,0 +1,35 @@
+#!/usr/bin/env sh
+# Idempotent-ish bootstrap for BossPickSeoul Vault paths, policies, and AppRoles.
+# Run after vault operator init/unseal and vault login.
+
+set -eu
+
+vault secrets enable -path=kv kv-v2 2>/dev/null || true
+vault auth enable approle 2>/dev/null || true
+
+vault policy write jenkins-bosspickseoul /vault/policies/jenkins-bosspickseoul.hcl
+vault policy write backend-bosspickseoul /vault/policies/backend-bosspickseoul.hcl
+
+vault write auth/approle/role/jenkins-bosspickseoul \
+  token_policies="jenkins-bosspickseoul" \
+  token_ttl="1h" \
+  token_max_ttl="4h" \
+  secret_id_ttl="720h" \
+  secret_id_num_uses="0"
+
+vault write auth/approle/role/backend-bosspickseoul \
+  token_policies="backend-bosspickseoul" \
+  token_ttl="30m" \
+  token_max_ttl="2h" \
+  secret_id_ttl="720h" \
+  secret_id_num_uses="0"
+
+cat <<'EOF'
+Bootstrap complete.
+
+Next:
+  vault read auth/approle/role/jenkins-bosspickseoul/role-id
+  vault write -f auth/approle/role/jenkins-bosspickseoul/secret-id
+  vault read auth/approle/role/backend-bosspickseoul/role-id
+  vault write -f auth/approle/role/backend-bosspickseoul/secret-id
+EOF

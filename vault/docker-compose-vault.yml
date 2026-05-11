@@ -1,18 +1,21 @@
 services:
   vault:
-    image: ${VAULT_IMAGE:-hashicorp/vault:1.18}
+    image: ${VAULT_IMAGE}
     container_name: vault
     restart: unless-stopped
     cap_add:
       - IPC_LOCK
     environment:
-      VAULT_ADDR: ${VAULT_ADDR:-http://127.0.0.1:8200}
-      VAULT_API_ADDR: ${VAULT_API_ADDR:-http://127.0.0.1:8200}
+      VAULT_ADDR: ${VAULT_ADDR}
+      VAULT_API_ADDR: ${VAULT_API_ADDR}
+      TZ: ${TZ:-Asia/Seoul}
     ports:
-      - "${VAULT_PORT:-8200}:8200"
+      - "${VAULT_PORT}:8200"
     volumes:
       - ./vault.hcl:/vault/config/vault.hcl:ro
       - ./docker-entrypoint-vault.sh:/usr/local/bin/docker-entrypoint-vault.sh:ro
+      - ./policies:/vault/policies:ro
+      - ./scripts:/vault/scripts:ro
       - ./data:/vault/file
       - ./logs:/vault/logs
     entrypoint:
