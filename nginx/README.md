@@ -15,10 +15,13 @@
 ## 디렉터리 구조
 
 ```text
-Nginx/
+nginx/
+├── .env.example                # 환경변수 예시
+├── .gitignore                  # 런타임 파일 제외
 ├── conf.d/                    # 도메인별 서버 블록 설정
 ├── docker-compose-nginx.yml   # Nginx 컨테이너 실행 정의
 ├── entrypoint.sh              # 컨테이너 시작 시 실행되는 엔트리포인트
+├── install-nginx.sh           # Nginx 실행 스크립트
 ├── nginx.conf                 # Nginx 전역 설정
 ├── nginx.Dockerfile           # Nginx 커스텀 이미지 빌드 파일
 └── README.md                  # 이 문서
@@ -169,18 +172,38 @@ location /.well-known/acme-challenge/ {
 
 ## 실행 방법
 
-### 이미지 빌드 및 실행
+실행 전 `.env`를 준비합니다.
 
 ```bash
-cd Nginx
-docker compose -f docker-compose-nginx.yml up -d --build
+cd nginx
+cp .env.example .env
+```
+
+필수 값:
+
+| 변수 | 설명 | 예시 |
+| --- | --- | --- |
+| `TZ` | 컨테이너 타임존 | `Asia/Seoul` |
+
+### 스크립트 실행
+
+```bash
+cd nginx
+sh install-nginx.sh
+```
+
+### 직접 실행
+
+```bash
+cd nginx
+docker compose --env-file .env -f docker-compose-nginx.yml up -d --build
 ```
 
 ### 상태 확인
 
 ```bash
-docker ps
-docker logs nginx
+docker compose --env-file .env -f docker-compose-nginx.yml ps
+docker logs -f nginx
 ```
 
 ### 설정 반영
@@ -195,7 +218,7 @@ docker exec nginx nginx -s reload
 이미지 변경이 포함되면 재빌드가 필요합니다.
 
 ```bash
-docker compose -f docker-compose-nginx.yml up -d --build
+docker compose --env-file .env -f docker-compose-nginx.yml up -d --build
 ```
 
 ---

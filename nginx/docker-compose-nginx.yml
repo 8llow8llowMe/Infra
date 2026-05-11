@@ -21,7 +21,7 @@ services:
       - ../certbot/webroot:/var/www/certbot
       - ../certbot/letsencrypt:/etc/letsencrypt
     environment:
-      - TZ=Asia/Seoul
+      TZ: ${TZ}
     logging:
       # 4. Docker 컨테이너 로그 보존 정책
       driver: 'json-file'
