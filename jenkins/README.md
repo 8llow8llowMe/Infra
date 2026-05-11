@@ -35,6 +35,9 @@ jenkins/
 ├── jenkins-agent.Dockerfile          # Jenkins agent 공통 이미지
 ├── docker-entrypoint-jenkins.sh       # controller 시작 스크립트
 ├── docker-entrypoint-jenkins-agent.sh # agent 시작 스크립트
+├── install-jenkins.sh                 # controller 실행 스크립트
+├── install-jenkins-builder.sh         # builder agent 실행 스크립트
+├── install-jenkins-agent.sh           # 원격 deploy agent 실행 스크립트
 ├── .env.example                      # 환경변수 예시
 └── README.md
 ```
@@ -63,11 +66,11 @@ cp .env.example .env
 | --- | --- | --- |
 | `JENKINS_WEB_PORT` | Jenkins Web UI 외부 포트 | `49999` |
 | `JENKINS_AGENT_PORT` | inbound agent 연결 포트 | `50000` |
-| `JENKINS_URL` | agent가 접근할 controller 주소 | `http://jenkins-controller:8080` |
-| `JENKINS_CONTROLLER_JAVA_OPTS` | controller JVM 옵션 | `-Xms512m -Xmx2048m` |
+| `JENKINS_URL` | agent가 접근할 controller 주소 | `http://<ai-host-private-ip>:49999` |
+| `JENKINS_CONTROLLER_JAVA_OPTS` | controller JVM 옵션 | `"-Xms512m -Xmx2048m"` |
 | `JENKINS_OPTS` | Jenkins 실행 옵션, 없으면 빈 값 | 빈 값 가능 |
-| `JENKINS_BUILDER_NAME` | Jenkins UI에 등록한 builder node 이름 | `minipc-builder` |
-| `JENKINS_BUILDER_SECRET` | builder node에서 발급된 secret | Jenkins UI 발급값 |
+| `JENKINS_BUILDER_NAME` | Jenkins UI에 등록한 builder node 이름 | `ai-host-builder` |
+| `JENKINS_BUILDER_SECRET` | builder node 생성 후 Jenkins가 발급한 secret | Jenkins UI 발급값 |
 
 원격 서버의 `docker-compose-jenkins-agent.yml`에서 사용하는 값:
 
@@ -75,41 +78,64 @@ cp .env.example .env
 | --- | --- | --- |
 | `JENKINS_URL` | 원격 agent가 접근할 controller 주소 | `http://<미니PC-IP>:49999` |
 | `JENKINS_DEPLOY_AGENT_NAME` | Jenkins UI에 등록한 deploy node 이름 | `backend-1-deploy` |
-| `JENKINS_DEPLOY_AGENT_SECRET` | deploy node에서 발급된 secret | Jenkins UI 발급값 |
+| `JENKINS_DEPLOY_AGENT_SECRET` | deploy node 생성 후 Jenkins가 발급한 secret | Jenkins UI 발급값 |
 
 주의:
 
 - `.env`는 secret을 포함하므로 Git에 커밋하지 않습니다.
 - `.env.example`만 Git에 커밋하고, 실제 값은 서버별 `.env`에서 관리합니다.
-- `JENKINS_BUILDER_SECRET`, `JENKINS_DEPLOY_AGENT_SECRET`은 Jenkins UI에서 node 생성 후 발급받은 값으로 교체합니다.
+- `JENKINS_BUILDER_SECRET`, `JENKINS_DEPLOY_AGENT_SECRET`은 직접 정하는 비밀번호가 아닙니다. Jenkins UI에서 node 생성 후 발급받은 값으로 교체합니다.
+- 공백이 있는 값은 `JENKINS_CONTROLLER_JAVA_OPTS="-Xms512m -Xmx2048m"`처럼 따옴표로 감쌉니다.
 
 ---
 
 ## 미니PC Jenkins 실행
 
+처음에는 controller만 먼저 실행합니다. builder agent는 Jenkins UI에서 node를 만든 뒤 secret을 `.env`에 넣고 실행합니다.
+
+controller 실행:
+
 ```bash
 cd jenkins
-docker compose -f docker-compose-jenkins.yml up -d --build
+sh install-jenkins.sh
+```
+
+직접 실행:
+
+```bash
+cd jenkins
+docker compose --env-file .env -f docker-compose-jenkins.yml up -d --build jenkins-controller
 ```
 
 상태 확인:
 
 ```bash
-docker compose -f docker-compose-jenkins.yml ps
+docker compose --env-file .env -f docker-compose-jenkins.yml ps
 docker logs -f jenkins-controller
-docker logs -f jenkins-builder-agent
 ```
 
 중지:
 
 ```bash
-docker compose -f docker-compose-jenkins.yml down
+docker compose --env-file .env -f docker-compose-jenkins.yml down
 ```
 
-builder agent만 재기동:
+builder agent 실행:
+
+1. Jenkins UI에서 `ai-host-builder` node 생성
+2. 발급된 secret을 `.env`의 `JENKINS_BUILDER_SECRET`에 입력
+3. builder agent 실행
 
 ```bash
-docker compose -f docker-compose-jenkins.yml up -d --build jenkins-builder-agent
+cd jenkins
+sh install-jenkins-builder.sh
+```
+
+직접 실행:
+
+```bash
+docker compose --env-file .env -f docker-compose-jenkins.yml up -d --build jenkins-builder-agent
+docker logs -f jenkins-builder-agent
 ```
 
 ---
@@ -120,7 +146,13 @@ backend-1 같은 배포 대상 서버에서는 같은 폴더의 `.env`에 deploy
 
 ```bash
 cd jenkins
-docker compose -f docker-compose-jenkins-agent.yml up -d --build
+sh install-jenkins-agent.sh
+```
+
+직접 실행:
+
+```bash
+docker compose --env-file .env -f docker-compose-jenkins-agent.yml up -d --build
 ```
 
 상태 확인:
@@ -153,6 +185,28 @@ docker exec jenkins-controller cat /var/jenkins_home/secrets/initialAdminPasswor
 - controller executor 수를 `0`으로 설정
 - 빌드는 `builder` 라벨 agent에서만 실행
 
+추천 플러그인:
+
+- Pipeline
+- Git
+- Docker Pipeline
+- Credentials Binding
+- HashiCorp Vault Plugin
+- Blue Ocean 또는 Pipeline Stage View
+
+Vault를 먼저 구성했다면 Jenkins credential에 다음 값을 등록합니다.
+
+| Credential ID | 종류 | 값 |
+| --- | --- | --- |
+| `vault-jenkins-role-id` | Secret text | `jenkins-bosspickseoul` AppRole role_id |
+| `vault-jenkins-secret-id` | Secret text | `jenkins-bosspickseoul` AppRole secret_id |
+
+Vault 주소는 Jenkins 전역 설정이나 pipeline 환경변수에서 사용합니다.
+
+```text
+VAULT_ADDR=http://<ai-host-private-ip>:8200
+```
+
 ---
 
 ## Builder Agent 등록
@@ -160,7 +214,7 @@ docker exec jenkins-controller cat /var/jenkins_home/secrets/initialAdminPasswor
 Jenkins UI에서 node를 먼저 만듭니다.
 
 1. Manage Jenkins -> Nodes -> New Node
-2. Name: `minipc-builder`
+2. Name: `ai-host-builder`
 3. Type: Permanent Agent
 4. Remote root directory: `/home/jenkins/agent`
 5. Labels: `builder`
@@ -168,6 +222,20 @@ Jenkins UI에서 node를 먼저 만듭니다.
 7. Launch method: Launch agent by connecting it to the controller
 
 생성 후 표시되는 secret을 `.env`의 `JENKINS_BUILDER_SECRET`에 반영합니다.
+
+그 다음 builder agent를 실행합니다.
+
+```bash
+sh install-jenkins-builder.sh
+```
+
+연결 확인:
+
+```bash
+docker logs -f jenkins-builder-agent
+```
+
+Jenkins UI의 node 상태가 online이면 정상입니다.
 
 ---
 
@@ -224,8 +292,8 @@ pipeline {
 Compose 문법 확인:
 
 ```bash
-docker compose -f docker-compose-jenkins.yml config
-docker compose -f docker-compose-jenkins-agent.yml config
+docker compose --env-file .env -f docker-compose-jenkins.yml config
+docker compose --env-file .env -f docker-compose-jenkins-agent.yml config
 ```
 
 agent가 연결되지 않을 때:

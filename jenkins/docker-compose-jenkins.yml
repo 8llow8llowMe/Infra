@@ -9,8 +9,8 @@ services:
       JENKINS_OPTS: ${JENKINS_OPTS}
       JAVA_OPTS: ${JENKINS_CONTROLLER_JAVA_OPTS}
     ports:
-      - "${JENKINS_WEB_PORT}:8080"
-      - "${JENKINS_AGENT_PORT}:50000"
+      - '${JENKINS_WEB_PORT}:8080'
+      - '${JENKINS_AGENT_PORT}:50000'
     volumes:
       - ./jenkins-home:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
@@ -19,8 +19,8 @@ services:
     logging:
       driver: json-file
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: '10m'
+        max-file: '3'
 
   jenkins-builder-agent:
     container_name: jenkins-builder-agent
@@ -46,8 +46,8 @@ services:
     logging:
       driver: json-file
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: '10m'
+        max-file: '3'
 
 networks:
   8llow8llowme-net:

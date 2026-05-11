@@ -1,49 +1,28 @@
-#!/bin/bash
-# Jenkins Agent 설치 스크립트
-# - .env 기반 Jenkins Agent 자동 빌드 및 실행
-# - infra/jenkins-agent 경로 내에서 실행 가능
+#!/usr/bin/env sh
+# 원격 서버용 Jenkins deploy agent를 시작합니다.
 
-set -e
+set -eu
 
-# 스크립트가 위치한 절대 경로 계산
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-BASE_DIR="$SCRIPT_DIR"
-COMPOSE_FILE="$BASE_DIR/docker-compose-jenkins-agent.yml"
-NETWORK_NAME="8llow8llowme-net"
+if [ ! -f ./.env ]; then
+  cp ./.env.example ./.env
+  echo ".env.example을 복사해 .env를 생성했습니다. deploy agent 값을 확인하세요."
+fi
 
-echo "[INFO] Jenkins Agent 설치 시작..."
+get_env_value() {
+  grep -E "^$1=" ./.env | tail -n 1 | cut -d= -f2- | sed 's/^"//; s/"$//'
+}
 
-# 1. 디렉토리 및 필수 파일 확인
-cd "$BASE_DIR"
+JENKINS_DEPLOY_AGENT_SECRET="$(get_env_value JENKINS_DEPLOY_AGENT_SECRET)"
 
-if [ ! -f ".env" ]; then
-  echo "[ERROR] .env 파일이 없습니다. Jenkins 환경 변수를 먼저 설정해주세요."
+if [ "$JENKINS_DEPLOY_AGENT_SECRET" = "change-me-after-node-created" ] || [ -z "$JENKINS_DEPLOY_AGENT_SECRET" ]; then
+  echo "JENKINS_DEPLOY_AGENT_SECRET이 아직 설정되지 않았습니다."
+  echo "Jenkins UI에서 deploy node를 만든 뒤 발급된 secret을 .env에 입력하세요."
   exit 1
 fi
 
-if [ ! -f "$COMPOSE_FILE" ]; then
-  echo "[ERROR] docker-compose-jenkins-agent.yml 파일이 없습니다."
-  exit 1
-fi
+mkdir -p ./jenkins-deploy-agent
 
-# 2. Docker 네트워크 확인/생성
-if ! docker network ls | grep -q "$NETWORK_NAME"; then
-  docker network create "$NETWORK_NAME"
-  echo "[INFO] Docker 네트워크 생성: $NETWORK_NAME"
-else
-  echo "[INFO] Docker 네트워크 이미 존재: $NETWORK_NAME"
-fi
+docker compose --env-file .env -f docker-compose-jenkins-agent.yml up -d --build
 
-# 3. Jenkins Agent 빌드 및 실행
-echo "[INFO] Jenkins Agent 컨테이너 빌드 및 실행 중..."
-docker compose -f "$COMPOSE_FILE" up -d --build
-
-# 4. 실행 확인
-sleep 3
-if docker ps | grep -q "jenkins-agent"; then
-  echo "[SUCCESS] Jenkins Agent가 정상적으로 실행되었습니다."
-else
-  echo "[ERROR] Jenkins Agent 실행 실패. 로그 확인 필요:"
-  docker logs jenkins-agent || true
-  exit 1
-fi
+echo "Jenkins deploy agent가 시작되었습니다."
+echo "로그 확인: docker logs -f jenkins-deploy-agent"
