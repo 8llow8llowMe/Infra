@@ -12,6 +12,11 @@ services:
       - es-data:/usr/share/elasticsearch/data
     networks:
       - 8llow8llowme-net
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   kibana:
     image: kibana:9.1.4
@@ -24,6 +29,11 @@ services:
       - '5601:5601'
     networks:
       - 8llow8llowme-net
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   es-data:

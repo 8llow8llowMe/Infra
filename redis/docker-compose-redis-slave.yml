@@ -21,6 +21,11 @@ services:
       - REDIS_MASTER_PASSWORD=${REDIS_MASTER_PASSWORD}
     networks:
       - 8llow8llowme-net
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # Sentinel Node 2
   sentinel:
@@ -43,9 +48,13 @@ services:
       - REDIS_MASTER_PASSWORD=${REDIS_MASTER_PASSWORD}
     networks:
       - 8llow8llowme-net
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   8llow8llowme-net:
     name: 8llow8llowme-net
     driver: bridge
-

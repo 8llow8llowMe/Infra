@@ -14,6 +14,11 @@ services:
     restart: unless-stopped
     networks:
       - 8llow8llowme-net
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   8llow8llowme-net:

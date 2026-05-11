@@ -16,3 +16,8 @@ services:
       NGINX_CONTAINER: nginx
       STRONG_DH: ${STRONG_DH:-}
     entrypoint: ['/bin/sh', '/usr/local/bin/renew-loop.sh']
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
