@@ -10,7 +10,10 @@
 
 ```text
 certbot/
+├── .env.example                 # 환경변수 예시
+├── .gitignore                   # 인증서/로그/런타임 파일 제외
 ├── docker-compose-certbot.yml   # Certbot 갱신 컨테이너 정의
+├── install-certbot.sh           # 갱신 컨테이너 실행 스크립트
 ├── renew-loop.sh                # 12시간 주기 갱신 루프와 Nginx reload hook
 ├── init-cert-non-www.sh         # 최초 non-www 인증서 발급용 스크립트
 ├── init-cert-with-www.sh        # 최초 www 포함 인증서 발급용 스크립트
@@ -81,9 +84,37 @@ Certbot 컨테이너의 entrypoint입니다.
 
 ## 실행 방법
 
+실행 전 `.env`를 준비합니다.
+
 ```bash
 cd ~/infra/certbot
-docker compose -f docker-compose-certbot.yml up -d --force-recreate --remove-orphans
+cp .env.example .env
+vi .env
+```
+
+필수 값:
+
+| 변수 | 설명 | 예시 |
+| --- | --- | --- |
+| `TZ` | 컨테이너 타임존 | `Asia/Seoul` |
+| `CERTBOT_WEBROOT` | HTTP-01 challenge webroot | `/var/www/certbot` |
+| `CERTBOT_RENEW_INTERVAL` | 갱신 확인 주기 | `12h` |
+| `NGINX_CONTAINER` | reload할 Nginx 컨테이너 이름 | `nginx` |
+| `STRONG_DH` | 값이 있으면 4096bit DH 파라미터 생성 | 빈 값 |
+| `CERTBOT_EMAIL` | 최초 인증서 발급 이메일 | `admin@example.com` |
+
+스크립트 실행:
+
+```bash
+cd ~/infra/certbot
+sh install-certbot.sh
+```
+
+직접 실행:
+
+```bash
+cd ~/infra/certbot
+docker compose --env-file .env -f docker-compose-certbot.yml up -d --force-recreate --remove-orphans
 ```
 
 상태 확인:
@@ -103,16 +134,20 @@ non-www 단일 도메인:
 
 ```bash
 cd ~/infra/certbot
-vi init-cert-non-www.sh
-./init-cert-non-www.sh
+./init-cert-non-www.sh example.com
 ```
 
 www 포함 도메인:
 
 ```bash
 cd ~/infra/certbot
-vi init-cert-with-www.sh
-./init-cert-with-www.sh
+./init-cert-with-www.sh example.com
+```
+
+4096bit DH 파라미터를 만들고 싶으면 두 번째 인자로 `--strong-dh`를 전달합니다.
+
+```bash
+./init-cert-with-www.sh example.com --strong-dh
 ```
 
 발급 후 Nginx 설정의 인증서 경로가 실제 certificate name과 일치해야 합니다.
@@ -247,7 +282,7 @@ docker exec certbot which docker
 
 ```bash
 cd ~/infra/certbot
-docker compose -f docker-compose-certbot.yml up -d --force-recreate
+docker compose --env-file .env -f docker-compose-certbot.yml up -d --force-recreate
 ```
 
 ---

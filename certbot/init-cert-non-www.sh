@@ -1,17 +1,44 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+# 단일 도메인(non-www) Let's Encrypt 인증서를 최초 발급합니다.
 
-DOMAIN="도메인명"
-EMAIL="your-email@example.com"
+set -euo pipefail
+
+DOMAIN="${1:-${CERTBOT_DOMAIN:-}}"
+EMAIL="${CERTBOT_EMAIL:-}"
 LE_DIR="./letsencrypt"
-
-# 추가 옵션: --strong-dh 주면 4096bit 사용
 DH_BITS=2048
-if [[ "$1" == "--strong-dh" ]]; then
+
+if [ ! -f ./.env ]; then
+  cp ./.env.example ./.env
+  echo ".env.example을 복사해 .env를 생성했습니다. CERTBOT_EMAIL 값을 확인하세요."
+fi
+
+if [ -f ./.env ]; then
+  set -a
+  # shellcheck disable=SC1091
+  source ./.env
+  set +a
+  DOMAIN="${1:-${CERTBOT_DOMAIN:-$DOMAIN}}"
+  EMAIL="${CERTBOT_EMAIL:-$EMAIL}"
+fi
+
+if [ -z "$DOMAIN" ]; then
+  echo "사용법: CERTBOT_EMAIL=me@example.com $0 example.com"
+  echo "또는 .env에 CERTBOT_EMAIL을 설정한 뒤 $0 example.com"
+  exit 1
+fi
+
+if [ -z "$EMAIL" ] || [ "$EMAIL" = "your-email@example.com" ]; then
+  echo "CERTBOT_EMAIL을 실제 이메일로 설정하세요."
+  exit 1
+fi
+
+if [ "${2:-}" = "--strong-dh" ]; then
   DH_BITS=4096
 fi
 
-# 필요한 SSL 설정 파일이 없으면 미리 생성
+mkdir -p "$LE_DIR" ./webroot ./logs
+
 if [ ! -f "$LE_DIR/options-ssl-nginx.conf" ]; then
   echo "[init] options-ssl-nginx.conf 다운로드"
   curl -fSL https://raw.githubusercontent.com/certbot/certbot/main/certbot-nginx/src/certbot_nginx/_internal/tls_configs/options-ssl-nginx.conf \
@@ -20,12 +47,11 @@ fi
 
 if [ ! -f "$LE_DIR/ssl-dhparams.pem" ]; then
   echo "[init] ssl-dhparams.pem 생성 (${DH_BITS}bit)"
-  openssl dhparam -out "$LE_DIR/ssl-dhparams.pem" $DH_BITS
+  openssl dhparam -out "$LE_DIR/ssl-dhparams.pem" "$DH_BITS"
 fi
 
-# certbot 컨테이너에서 최초 인증서 발급
-echo "[init] 인증서 발급 시작"
-docker compose -f docker-compose-certbot.yml run --rm \
+echo "[init] ${DOMAIN} 인증서 발급 시작"
+docker compose --env-file .env -f docker-compose-certbot.yml run --rm \
   --entrypoint certbot certbot certonly \
   --webroot -w /var/www/certbot \
   -d "$DOMAIN" \
@@ -33,7 +59,6 @@ docker compose -f docker-compose-certbot.yml run --rm \
   --agree-tos \
   --no-eff-email
 
-# 발급 완료 후 nginx reload
-docker exec nginx nginx -s reload
+docker exec "${NGINX_CONTAINER:-nginx}" nginx -s reload
 
-echo "[$DOMAIN] SSL 인증서 발급 및 Nginx 리로드 완료"
+echo "[${DOMAIN}] SSL 인증서 발급 및 Nginx reload 완료"

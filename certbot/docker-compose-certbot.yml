@@ -11,10 +11,11 @@ services:
       - /usr/bin/docker:/usr/bin/docker:ro
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
-      CERTBOT_WEBROOT: /var/www/certbot
-      CERTBOT_RENEW_INTERVAL: 12h
-      NGINX_CONTAINER: nginx
-      STRONG_DH: ${STRONG_DH:-}
+      CERTBOT_WEBROOT: ${CERTBOT_WEBROOT}
+      CERTBOT_RENEW_INTERVAL: ${CERTBOT_RENEW_INTERVAL}
+      NGINX_CONTAINER: ${NGINX_CONTAINER}
+      STRONG_DH: ${STRONG_DH}
+      TZ: ${TZ}
     entrypoint: ['/bin/sh', '/usr/local/bin/renew-loop.sh']
     logging:
       driver: json-file
