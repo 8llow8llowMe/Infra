@@ -8,6 +8,7 @@ services:
     environment:
       JENKINS_OPTS: ${JENKINS_OPTS}
       JAVA_OPTS: ${JENKINS_CONTROLLER_JAVA_OPTS}
+      TZ: ${TZ}
     ports:
       - '${JENKINS_WEB_PORT}:8080'
       - '${JENKINS_AGENT_PORT}:50000'
@@ -35,6 +36,7 @@ services:
       JENKINS_AGENT_NAME: ${JENKINS_BUILDER_NAME}
       JENKINS_AGENT_SECRET: ${JENKINS_BUILDER_SECRET}
       JENKINS_AGENT_WORKDIR: /home/jenkins/agent
+      TZ: ${TZ}
     volumes:
       - ./jenkins-builder-agent:/home/jenkins/agent
       - jenkins-builder-agent-gradle:/home/jenkins/.gradle

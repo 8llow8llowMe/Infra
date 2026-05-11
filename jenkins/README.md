@@ -67,8 +67,9 @@ cp .env.example .env
 | `JENKINS_WEB_PORT` | Jenkins Web UI 외부 포트 | `49999` |
 | `JENKINS_AGENT_PORT` | inbound agent 연결 포트 | `50000` |
 | `JENKINS_URL` | agent가 접근할 controller 주소 | `http://<ai-host-private-ip>:49999` |
-| `JENKINS_CONTROLLER_JAVA_OPTS` | controller JVM 옵션 | `"-Xms512m -Xmx2048m"` |
+| `JENKINS_CONTROLLER_JAVA_OPTS` | controller JVM 옵션 | `"-Xms512m -Xmx2048m -Duser.timezone=Asia/Seoul"` |
 | `JENKINS_OPTS` | Jenkins 실행 옵션, 없으면 빈 값 | 빈 값 가능 |
+| `TZ` | 컨테이너 타임존 | `Asia/Seoul` |
 | `JENKINS_BUILDER_NAME` | Jenkins UI에 등록한 builder node 이름 | `ai-host-builder` |
 | `JENKINS_BUILDER_SECRET` | builder node 생성 후 Jenkins가 발급한 secret | Jenkins UI 발급값 |
 
@@ -85,7 +86,8 @@ cp .env.example .env
 - `.env`는 secret을 포함하므로 Git에 커밋하지 않습니다.
 - `.env.example`만 Git에 커밋하고, 실제 값은 서버별 `.env`에서 관리합니다.
 - `JENKINS_BUILDER_SECRET`, `JENKINS_DEPLOY_AGENT_SECRET`은 직접 정하는 비밀번호가 아닙니다. Jenkins UI에서 node 생성 후 발급받은 값으로 교체합니다.
-- 공백이 있는 값은 `JENKINS_CONTROLLER_JAVA_OPTS="-Xms512m -Xmx2048m"`처럼 따옴표로 감쌉니다.
+- 공백이 있는 값은 `JENKINS_CONTROLLER_JAVA_OPTS="-Xms512m -Xmx2048m -Duser.timezone=Asia/Seoul"`처럼 따옴표로 감쌉니다.
+- 호스트 OS 시간대도 KST로 맞추는 것을 권장합니다. 컨테이너 `TZ`와 Jenkins JVM 타임존을 함께 맞추면 로그와 스케줄 시간이 일관됩니다.
 
 ---
 
