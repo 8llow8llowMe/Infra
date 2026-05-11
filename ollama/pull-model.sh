@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Pull a model into the Ollama container.
+# Ollama 컨테이너에 모델을 다운로드합니다.
 
 set -eu
 
@@ -14,4 +14,4 @@ OLLAMA_CONTAINER_NAME="${OLLAMA_CONTAINER_NAME:-ollama}"
 
 docker exec -it "$OLLAMA_CONTAINER_NAME" ollama pull "$MODEL"
 
-echo "Pulled model: $MODEL"
+echo "모델 다운로드 완료: $MODEL"
