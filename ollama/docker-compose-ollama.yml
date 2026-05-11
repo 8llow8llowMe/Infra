@@ -1,0 +1,48 @@
+services:
+  ollama:
+    image: ${OLLAMA_IMAGE}
+    container_name: ${OLLAMA_CONTAINER_NAME}
+    restart: unless-stopped
+    environment:
+      OLLAMA_HOST: ${OLLAMA_HOST}
+      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE}
+      OLLAMA_NUM_PARALLEL: ${OLLAMA_NUM_PARALLEL}
+      TZ: ${TZ}
+    ports:
+      - '${OLLAMA_PORT}:${OLLAMA_CONTAINER_PORT}'
+    volumes:
+      - '${OLLAMA_DATA_DIR}:${OLLAMA_CONTAINER_DATA_DIR}'
+    networks:
+      - 8llow8llowme-net
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  open-webui:
+    image: ${OPEN_WEBUI_IMAGE}
+    container_name: ${OPEN_WEBUI_CONTAINER_NAME}
+    restart: unless-stopped
+    depends_on:
+      - ollama
+    environment:
+      OLLAMA_BASE_URL: ${OPEN_WEBUI_OLLAMA_BASE_URL}
+      WEBUI_SECRET_KEY: ${WEBUI_SECRET_KEY}
+      TZ: ${TZ}
+    ports:
+      - '${OPEN_WEBUI_PORT}:${OPEN_WEBUI_CONTAINER_PORT}'
+    volumes:
+      - '${OPEN_WEBUI_DATA_DIR}:${OPEN_WEBUI_CONTAINER_DATA_DIR}'
+    networks:
+      - 8llow8llowme-net
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+networks:
+  8llow8llowme-net:
+    name: ${DOCKER_NETWORK_NAME}
+    driver: bridge
