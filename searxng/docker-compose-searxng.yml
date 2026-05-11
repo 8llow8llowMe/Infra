@@ -1,0 +1,33 @@
+services:
+  searxng:
+    image: ${SEARXNG_IMAGE}
+    container_name: ${SEARXNG_CONTAINER_NAME}
+    restart: unless-stopped
+    environment:
+      SEARXNG_BASE_URL: ${SEARXNG_BASE_URL}
+      TZ: ${TZ}
+    ports:
+      - "${SEARXNG_PORT}:${SEARXNG_CONTAINER_PORT}"
+    volumes:
+      - ./config:/etc/searxng:rw
+      - ./cache:/var/cache/searxng:rw
+    networks:
+      - 8llow8llowme-net
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+      - DAC_OVERRIDE
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  8llow8llowme-net:
+    name: ${DOCKER_NETWORK_NAME}
+    driver: bridge
+
