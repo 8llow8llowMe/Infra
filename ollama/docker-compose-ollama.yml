@@ -3,10 +3,15 @@ services:
     image: ${OLLAMA_IMAGE}
     container_name: ${OLLAMA_CONTAINER_NAME}
     restart: unless-stopped
+    devices:
+      - '${AMD_GPU_DRI_DEVICE}:${AMD_GPU_DRI_DEVICE}'
+    group_add:
+      - '${AMD_GPU_RENDER_GROUP}'
     environment:
       OLLAMA_HOST: ${OLLAMA_HOST}
       OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE}
       OLLAMA_NUM_PARALLEL: ${OLLAMA_NUM_PARALLEL}
+      OLLAMA_VULKAN: ${OLLAMA_VULKAN}
       TZ: ${TZ}
     ports:
       - '${OLLAMA_PORT}:${OLLAMA_CONTAINER_PORT}'
