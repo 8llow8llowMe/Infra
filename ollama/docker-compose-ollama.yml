@@ -3,8 +3,12 @@ services:
     image: ${OLLAMA_IMAGE}
     container_name: ${OLLAMA_CONTAINER_NAME}
     restart: unless-stopped
+    # 호스트의 DRI 장치를 컨테이너에 전달해 Ollama가 AMD iGPU를 Vulkan으로 사용할 수 있게 합니다.
+    # 컨테이너 안에서도 /dev/dri/renderD128 같은 GPU 렌더 장치가 보이게 됩니다.
     devices:
       - '${AMD_GPU_DRI_DEVICE}:${AMD_GPU_DRI_DEVICE}'
+    # /dev/dri/renderD128 접근 권한을 위해 호스트의 render 그룹 GID를 컨테이너에 추가합니다.
+    # 이 값이 없으면 장치는 보여도 permission denied 때문에 GPU 사용에 실패할 수 있습니다.
     group_add:
       - '${AMD_GPU_RENDER_GROUP}'
     environment:
