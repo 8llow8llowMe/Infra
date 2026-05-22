@@ -29,9 +29,16 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends nodejs \
  && npm install -g yarn pnpm \
  && mkdir -p /usr/libexec/docker/cli-plugins \
- && curl -fsSL "https://github.com/docker/buildx/releases/download/v0.17.1/buildx-v0.17.1.linux-$(uname -m)" \
+ && arch="$(uname -m)" \
+ && case "$arch" in \
+      x86_64) buildx_arch="amd64"; compose_arch="x86_64" ;; \
+      aarch64|arm64) buildx_arch="arm64"; compose_arch="aarch64" ;; \
+      armv7l) buildx_arch="arm-v7"; compose_arch="armv7" ;; \
+      *) echo "Unsupported architecture: $arch"; exit 1 ;; \
+    esac \
+ && curl -fsSL "https://github.com/docker/buildx/releases/download/v0.17.1/buildx-v0.17.1.linux-${buildx_arch}" \
     -o /usr/libexec/docker/cli-plugins/docker-buildx \
- && curl -fsSL "https://github.com/docker/compose/releases/download/v2.30.3/docker-compose-linux-$(uname -m)" \
+ && curl -fsSL "https://github.com/docker/compose/releases/download/v2.30.3/docker-compose-linux-${compose_arch}" \
     -o /usr/libexec/docker/cli-plugins/docker-compose \
  && chmod +x /usr/libexec/docker/cli-plugins/docker-buildx /usr/libexec/docker/cli-plugins/docker-compose \
  && mkdir -p /home/jenkins/.gradle /home/jenkins/.npm /home/jenkins/.local/share/pnpm \

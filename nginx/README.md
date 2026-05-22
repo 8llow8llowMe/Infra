@@ -223,6 +223,53 @@ docker compose --env-file .env -f docker-compose-nginx.yml up -d --build
 
 ---
 
+## 신규 SSL 도메인 추가 절차
+
+인증서가 아직 없는 도메인은 HTTPS 설정을 바로 추가하면 Nginx가 인증서 파일을 찾지 못해 reload에 실패할 수 있습니다.
+
+먼저 HTTP-only bootstrap 설정을 생성해 Let's Encrypt HTTP-01 challenge가 통과할 수 있게 합니다.
+
+non-www 단일 도메인:
+
+```bash
+cd ~/infra/nginx
+sh create-ssl-bootstrap-conf.sh grafana.8llow8llowme.com non-www grafana
+docker exec nginx nginx -t
+docker exec nginx nginx -s reload
+
+cd ~/infra/certbot
+./init-cert-non-www.sh grafana.8llow8llowme.com
+```
+
+www 포함 도메인:
+
+```bash
+cd ~/infra/nginx
+sh create-ssl-bootstrap-conf.sh example.com with-www example
+docker exec nginx nginx -t
+docker exec nginx nginx -s reload
+
+cd ~/infra/certbot
+./init-cert-with-www.sh example.com
+```
+
+인증서 발급 후에는 `conf.d/*.bootstrap.conf`를 제거하거나 실제 HTTPS conf로 교체하고 Nginx를 reload합니다.
+
+```bash
+docker exec nginx nginx -t
+docker exec nginx nginx -s reload
+```
+
+Grafana처럼 서비스별 HTTPS 템플릿이 있는 경우:
+
+```bash
+cp templates/services/grafana.ssl.conf.template conf.d/grafana.conf
+docker exec nginx nginx -t
+docker exec nginx nginx -s reload
+```
+
+---
+
 ## 로그 운영
 
 로그는 두 방향으로 사용됩니다.

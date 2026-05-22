@@ -1,0 +1,4 @@
+.env
+prometheus-data/
+grafana-data/
+

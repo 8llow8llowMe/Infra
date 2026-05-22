@@ -1,0 +1,40 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets:
+          - prometheus:9090
+
+  - job_name: node
+    static_configs:
+      # deploy 서버 자신은 같은 compose 안의 node-exporter로 수집합니다.
+      - targets:
+          - node-exporter:9100
+        labels:
+          instance: deploy
+          role: deploy-agent
+
+      # 다른 서버에도 node_exporter를 설치한 뒤 아래 예시를 활성화하세요.
+      # - targets:
+      #     - 192.168.0.10:9100
+      #   labels:
+      #     instance: ollama-01
+      #     role: ai-ci
+      # - targets:
+      #     - 192.168.0.20:9100
+      #   labels:
+      #     instance: backend-1
+      #     role: backend
+      # - targets:
+      #     - 192.168.0.30:9100
+      #   labels:
+      #     instance: raspberrypi
+      #     role: database
+      # - targets:
+      #     - 192.168.0.40:9100
+      #   labels:
+      #     instance: storage
+      #     role: edge-storage

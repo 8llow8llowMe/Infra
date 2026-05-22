@@ -1,0 +1,19 @@
+# __DOMAIN__ SSL 인증서 최초 발급용 임시 설정
+# - 인증서가 아직 없을 때 사용하는 HTTP-only 설정입니다.
+# - __DOMAIN__ 과 www.__DOMAIN__ 인증서를 함께 발급할 때 사용합니다.
+# - 발급 완료 후 실제 HTTPS conf로 교체하세요.
+
+server {
+    listen 80;
+    server_name __DOMAIN__ www.__DOMAIN__;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 200 "__DOMAIN__ SSL bootstrap ready\n";
+        add_header Content-Type text/plain;
+    }
+}
+

@@ -130,6 +130,22 @@ docker logs certbot --tail=100
 
 신규 도메인은 Nginx에 HTTP challenge location을 먼저 추가하고 reload한 뒤 발급합니다.
 
+인증서가 아직 없는 상태에서 HTTPS server block을 먼저 추가하면 Nginx가 인증서 파일을 찾지 못해 reload에 실패할 수 있습니다. 이 경우 Nginx의 SSL bootstrap 템플릿으로 HTTP-only 설정을 먼저 만들고 인증서를 발급합니다.
+
+예시:
+
+```bash
+cd ~/infra/nginx
+sh create-ssl-bootstrap-conf.sh grafana.8llow8llowme.com non-www grafana
+docker exec nginx nginx -t
+docker exec nginx nginx -s reload
+
+cd ~/infra/certbot
+./init-cert-non-www.sh grafana.8llow8llowme.com
+```
+
+발급이 끝나면 `nginx/conf.d/grafana.bootstrap.conf`를 제거하거나 실제 HTTPS 설정 파일로 교체한 뒤 다시 reload합니다.
+
 non-www 단일 도메인:
 
 ```bash
