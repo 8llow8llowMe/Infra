@@ -53,12 +53,12 @@ VAULT_API_ADDR=http://<ai-host-private-ip>:8200
 
 필수 값:
 
-| 변수 | 설명 | 예시 |
-| --- | --- | --- |
-| `VAULT_IMAGE` | Vault 컨테이너 이미지 | `hashicorp/vault:1.18` |
-| `VAULT_PORT` | Vault API/UI 노출 포트 | `8200` |
-| `TZ` | 컨테이너 타임존 | `Asia/Seoul` |
-| `VAULT_ADDR` | CLI와 client가 접근할 주소 | `http://10.0.0.10:8200` |
+| 변수             | 설명                         | 예시                    |
+| ---------------- | ---------------------------- | ----------------------- |
+| `VAULT_IMAGE`    | Vault 컨테이너 이미지        | `hashicorp/vault:1.18`  |
+| `VAULT_PORT`     | Vault API/UI 노출 포트       | `8200`                  |
+| `TZ`             | 컨테이너 타임존              | `Asia/Seoul`            |
+| `VAULT_ADDR`     | CLI와 client가 접근할 주소   | `http://10.0.0.10:8200` |
 | `VAULT_API_ADDR` | Vault가 외부에 알릴 API 주소 | `http://10.0.0.10:8200` |
 
 `.env`, `data/`, `logs/`는 `.gitignore`에 포함되어 있어야 합니다.
@@ -185,6 +185,7 @@ docker exec -it vault vault kv get kv/bosspickseoul/backend/prod/core/api
 
 - `policies/jenkins-bosspickseoul.hcl`: Jenkins가 배포용 backend secret을 읽는 권한
 - `policies/backend-bosspickseoul.hcl`: backend-1 deploy/runtime 용 읽기 권한
+- `policies/ui-bosspickseoul.hcl`: Web UI 사용자가 `kv/bosspickseoul/*` 시크릿을 관리하는 권한
 
 실행 시점:
 
@@ -205,19 +206,51 @@ docker exec -it vault sh /vault/scripts/bootstrap-bosspickseoul.sh
 
 - `kv` KV v2 secret engine 활성화
 - `approle` auth method 활성화
+- `userpass` auth method 활성화
 - Jenkins/backend policy 등록
+- Web UI policy 등록
 - `jenkins-bosspickseoul`, `backend-bosspickseoul` AppRole 생성
+- `VAULT_UI_USERNAME`, `VAULT_UI_PASSWORD`가 전달된 경우 Web UI 사용자 생성 또는 갱신
 
 성공하면 다음 메시지가 출력됩니다.
 
 ```text
 Success! Enabled the kv-v2 secrets engine at: kv/
 Success! Enabled approle auth method at: approle/
+Success! Enabled userpass auth method at: userpass/
 Success! Uploaded policy: jenkins-bosspickseoul
 Success! Uploaded policy: backend-bosspickseoul
+Success! Uploaded policy: ui-bosspickseoul
 ```
 
-이미 한 번 실행한 뒤 다시 실행하면 `kv` 또는 `approle` 활성화 메시지는 생략될 수 있습니다. policy와 AppRole은 다시 등록되어 갱신됩니다.
+이미 한 번 실행한 뒤 다시 실행하면 `kv`, `approle`, `userpass` 활성화 메시지는 생략될 수 있습니다. policy와 AppRole은 다시 등록되어 갱신됩니다.
+
+## Web UI username/password 로그인
+
+Vault Web UI에서 username/password로 로그인하려면 `userpass` auth method와 UI 사용자가 필요합니다. Vault를 다시 초기화할 필요는 없고, unseal과 root token 로그인 이후 bootstrap을 다시 실행하면 됩니다.
+
+비밀번호는 Git에 커밋하지 않고 실행 시점에만 환경변수로 전달합니다.
+
+```bash
+docker exec -it \
+  -e VAULT_UI_USERNAME='username' \
+  -e VAULT_UI_PASSWORD='password' \
+  vault sh /vault/scripts/bootstrap-bosspickseoul.sh
+```
+
+Web UI 로그인 화면에서는 Method를 `Username` 또는 `userpass`로 선택하고 위 username/password를 입력합니다.
+
+비밀번호 변경:
+
+```bash
+docker exec -it vault vault write auth/userpass/users/admin/password password='<새-비밀번호>'
+```
+
+사용자 삭제:
+
+```bash
+docker exec -it vault vault delete auth/userpass/users/admin
+```
 
 ## AppRole 발급
 
@@ -239,11 +272,11 @@ docker exec -it vault vault write -f auth/approle/role/backend-bosspickseoul/sec
 
 발급된 값은 다음처럼 관리합니다.
 
-| 값 | 저장 위치 | 용도 |
-| --- | --- | --- |
-| Jenkins `role_id` | Jenkins Credential | Vault 로그인용 |
-| Jenkins `secret_id` | Jenkins Credential | Vault 로그인용 |
-| backend `role_id` | backend-1 deploy agent secret | 필요 시 Vault 로그인용 |
+| 값                  | 저장 위치                     | 용도                   |
+| ------------------- | ----------------------------- | ---------------------- |
+| Jenkins `role_id`   | Jenkins Credential            | Vault 로그인용         |
+| Jenkins `secret_id` | Jenkins Credential            | Vault 로그인용         |
+| backend `role_id`   | backend-1 deploy agent secret | 필요 시 Vault 로그인용 |
 | backend `secret_id` | backend-1 deploy agent secret | 필요 시 Vault 로그인용 |
 
 `secret_id`는 비밀번호처럼 취급합니다. Git에 커밋하지 않습니다.
