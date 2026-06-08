@@ -310,7 +310,7 @@ Certbot 관련 마운트 경로는 다음과 같습니다.
 - `conf.d` 안의 도메인 설정은 인증서 경로와 `server_name` 이 정확히 일치해야 합니다.
 - 사설 IP로 프록시하는 설정은 대상 서버 IP 변경 시 함께 수정해야 합니다.
 - WebSocket 또는 SSE를 쓰는 서비스는 `proxy_http_version`, `Upgrade`, `Connection`, timeout 설정을 확인해야 합니다.
-- `nowdoboss` 관련 설정처럼 작업 중인 파일이 있을 수 있으므로, 운영 전 `git status` 로 로컬 변경사항을 먼저 확인하는 것이 좋습니다.
+- `bosspickseoul` 관련 설정처럼 작업 중인 파일이 있을 수 있으므로, 운영 전 `git status` 로 로컬 변경사항을 먼저 확인하는 것이 좋습니다.
 
 ---
 
