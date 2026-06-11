@@ -13,11 +13,21 @@ get_env_value() {
 }
 
 JENKINS_WEB_PORT="$(get_env_value JENKINS_WEB_PORT)"
+JENKINS_CONTROLLER_HOME="$(get_env_value JENKINS_CONTROLLER_HOME)"
+JENKINS_CONTROLLER_CONTAINER_NAME="$(get_env_value JENKINS_CONTROLLER_CONTAINER_NAME)"
 
-mkdir -p ./jenkins-home
+if [ -z "$JENKINS_CONTROLLER_HOME" ]; then
+  JENKINS_CONTROLLER_HOME="./jenkins-home"
+fi
 
-docker compose --env-file .env -f docker-compose-jenkins.yml up -d --build jenkins-controller
+if [ -z "$JENKINS_CONTROLLER_CONTAINER_NAME" ]; then
+  JENKINS_CONTROLLER_CONTAINER_NAME="jenkins-controller"
+fi
+
+mkdir -p "$JENKINS_CONTROLLER_HOME"
+
+docker compose --env-file .env -f docker-compose-jenkins-controller.yml up -d --build
 
 echo "Jenkins controller가 시작되었습니다."
 echo "Web UI: http://<ai-host-ip>:${JENKINS_WEB_PORT}"
-echo "초기 비밀번호 확인: docker exec jenkins-controller cat /var/jenkins_home/secrets/initialAdminPassword"
+echo "초기 비밀번호 확인: docker exec $JENKINS_CONTROLLER_CONTAINER_NAME cat /var/jenkins_home/secrets/initialAdminPassword"

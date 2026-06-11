@@ -1,0 +1,32 @@
+name: ${JENKINS_CONTROLLER_PROJECT_NAME:-jenkins-controller}
+
+services:
+  jenkins-controller:
+    image: ${JENKINS_CONTROLLER_IMAGE:-jenkins-controller:latest}
+    container_name: ${JENKINS_CONTROLLER_CONTAINER_NAME:-jenkins-controller}
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: jenkins-controller.Dockerfile
+    environment:
+      JENKINS_OPTS: ${JENKINS_OPTS}
+      JAVA_OPTS: ${JENKINS_CONTROLLER_JAVA_OPTS}
+      TZ: ${TZ}
+    ports:
+      - '${JENKINS_WEB_PORT}:8080'
+      - '${JENKINS_AGENT_PORT}:50000'
+    volumes:
+      - ${JENKINS_CONTROLLER_HOME:-./jenkins-home}:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - 8llow8llowme-net
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+networks:
+  8llow8llowme-net:
+    name: 8llow8llowme-net
+    driver: bridge

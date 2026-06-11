@@ -13,6 +13,16 @@ get_env_value() {
 }
 
 JENKINS_BUILDER_SECRET="$(get_env_value JENKINS_BUILDER_SECRET)"
+JENKINS_BUILDER_CONTAINER_NAME="$(get_env_value JENKINS_BUILDER_CONTAINER_NAME)"
+JENKINS_BUILDER_WORKDIR="$(get_env_value JENKINS_BUILDER_WORKDIR)"
+
+if [ -z "$JENKINS_BUILDER_CONTAINER_NAME" ]; then
+  JENKINS_BUILDER_CONTAINER_NAME="jenkins-builder-agent"
+fi
+
+if [ -z "$JENKINS_BUILDER_WORKDIR" ]; then
+  JENKINS_BUILDER_WORKDIR="./jenkins-builder-agent"
+fi
 
 if [ "$JENKINS_BUILDER_SECRET" = "change-me-after-node-created" ] || [ -z "$JENKINS_BUILDER_SECRET" ]; then
   echo "JENKINS_BUILDER_SECRET이 아직 설정되지 않았습니다."
@@ -20,9 +30,9 @@ if [ "$JENKINS_BUILDER_SECRET" = "change-me-after-node-created" ] || [ -z "$JENK
   exit 1
 fi
 
-mkdir -p ./jenkins-builder-agent
+mkdir -p "$JENKINS_BUILDER_WORKDIR"
 
-docker compose --env-file .env -f docker-compose-jenkins.yml up -d --build jenkins-builder-agent
+docker compose --env-file .env -f docker-compose-jenkins-builder-agent.yml up -d --build
 
 echo "Jenkins builder agent가 시작되었습니다."
-echo "로그 확인: docker logs -f jenkins-builder-agent"
+echo "로그 확인: docker logs -f $JENKINS_BUILDER_CONTAINER_NAME"

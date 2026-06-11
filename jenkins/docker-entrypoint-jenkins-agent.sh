@@ -41,8 +41,21 @@ sync_docker_group() {
 }
 
 prepare_workdir() {
-  mkdir -p "$AGENT_DIR" /home/jenkins/.gradle /home/jenkins/.npm /home/jenkins/.local/share/pnpm
-  chown -R jenkins:jenkins "$AGENT_DIR" /home/jenkins/.gradle /home/jenkins/.npm /home/jenkins/.local
+  mkdir -p "$AGENT_DIR"
+
+  case "${JENKINS_AGENT_CACHE_PROFILE:-none}" in
+    builder)
+      mkdir -p /home/jenkins/.gradle /home/jenkins/.npm /home/jenkins/.local/share/pnpm
+      chown -R jenkins:jenkins "$AGENT_DIR" /home/jenkins/.gradle /home/jenkins/.npm /home/jenkins/.local
+      ;;
+    deploy)
+      mkdir -p /home/jenkins/.ssh
+      chown -R jenkins:jenkins "$AGENT_DIR" /home/jenkins/.ssh
+      ;;
+    *)
+      chown -R jenkins:jenkins "$AGENT_DIR"
+      ;;
+  esac
 }
 
 require_env JENKINS_URL
@@ -52,8 +65,10 @@ require_env JENKINS_AGENT_WORKDIR
 
 AGENT_DIR="$JENKINS_AGENT_WORKDIR"
 
-export JAVA_HOME=/opt/java/openjdk21
-export PATH="${JAVA_HOME}/bin:${PATH}"
+if [ -d /opt/java/openjdk21 ]; then
+  export JAVA_HOME=/opt/java/openjdk21
+  export PATH="${JAVA_HOME}/bin:${PATH}"
+fi
 
 sync_docker_group
 prepare_workdir

@@ -13,6 +13,16 @@ get_env_value() {
 }
 
 JENKINS_DEPLOY_AGENT_SECRET="$(get_env_value JENKINS_DEPLOY_AGENT_SECRET)"
+JENKINS_DEPLOY_AGENT_CONTAINER_NAME="$(get_env_value JENKINS_DEPLOY_AGENT_CONTAINER_NAME)"
+JENKINS_DEPLOY_AGENT_WORKDIR="$(get_env_value JENKINS_DEPLOY_AGENT_WORKDIR)"
+
+if [ -z "$JENKINS_DEPLOY_AGENT_CONTAINER_NAME" ]; then
+  JENKINS_DEPLOY_AGENT_CONTAINER_NAME="jenkins-deploy-agent"
+fi
+
+if [ -z "$JENKINS_DEPLOY_AGENT_WORKDIR" ]; then
+  JENKINS_DEPLOY_AGENT_WORKDIR="jenkins-deploy-agent"
+fi
 
 if [ "$JENKINS_DEPLOY_AGENT_SECRET" = "change-me-after-node-created" ] || [ -z "$JENKINS_DEPLOY_AGENT_SECRET" ]; then
   echo "JENKINS_DEPLOY_AGENT_SECRET이 아직 설정되지 않았습니다."
@@ -20,9 +30,9 @@ if [ "$JENKINS_DEPLOY_AGENT_SECRET" = "change-me-after-node-created" ] || [ -z "
   exit 1
 fi
 
-mkdir -p ./jenkins-deploy-agent
+mkdir -p "./$JENKINS_DEPLOY_AGENT_WORKDIR"
 
-docker compose --env-file .env -f docker-compose-jenkins-agent.yml up -d --build
+docker compose --env-file .env -f docker-compose-jenkins-deploy-agent.yml up -d --build
 
 echo "Jenkins deploy agent가 시작되었습니다."
-echo "로그 확인: docker logs -f jenkins-deploy-agent"
+echo "로그 확인: docker logs -f $JENKINS_DEPLOY_AGENT_CONTAINER_NAME"

@@ -1,0 +1,30 @@
+name: ${JENKINS_DEPLOY_AGENT_PROJECT_NAME:-jenkins-deploy-agent}
+
+services:
+  # 원격 서버에 배치하는 배포 전용 Jenkins inbound agent입니다.
+  # build agent는 docker-compose-jenkins-builder-agent.yml을 사용합니다.
+  jenkins-deploy-agent:
+    image: ${JENKINS_DEPLOY_AGENT_IMAGE:-jenkins-deploy-agent:latest}
+    container_name: ${JENKINS_DEPLOY_AGENT_CONTAINER_NAME:-jenkins-deploy-agent}
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: jenkins-deploy-agent.Dockerfile
+    environment:
+      JENKINS_URL: ${JENKINS_URL}
+      JENKINS_AGENT_NAME: ${JENKINS_DEPLOY_AGENT_NAME}
+      JENKINS_AGENT_SECRET: ${JENKINS_DEPLOY_AGENT_SECRET}
+      JENKINS_AGENT_WORKDIR: /home/jenkins/agent
+      JENKINS_AGENT_CACHE_PROFILE: deploy
+      TZ: ${TZ}
+    volumes:
+      - ./${JENKINS_DEPLOY_AGENT_WORKDIR:-jenkins-deploy-agent}:/home/jenkins/agent
+      - /var/run/docker.sock:/var/run/docker.sock
+      # SSH 배포나 compose 작업 디렉터리가 필요하면 서버별로 mount해서 사용합니다.
+      # - ~/.ssh:/home/jenkins/.ssh:ro
+      # - /home/projects:/home/jenkins/projects
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'

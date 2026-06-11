@@ -154,6 +154,8 @@ KV v2 mount는 `kv`를 사용합니다.
 kv/bosspickseoul/backend/{env}/{group}/{service}
 ```
 
+여기서 앞의 `kv`는 secret engine mount 이름입니다. 실제 secret path에는 `kv/`를 한 번 더 넣지 않습니다.
+
 예시:
 
 ```text
@@ -177,6 +179,51 @@ docker exec -it vault vault kv put kv/bosspickseoul/backend/prod/core/api \
 
 ```bash
 docker exec -it vault vault kv get kv/bosspickseoul/backend/prod/core/api
+```
+
+Jenkins 경로는 다음처럼 단순하게 유지합니다.
+
+```text
+VAULT_SECRET_PATH=kv/bosspickseoul/backend/dev/env
+```
+
+### kv 경로 초기화
+
+경로가 `kv/kv/...`처럼 꼬였고 Vault를 다시 구성하는 시점이라면 kv mount를 삭제 후 다시 만드는 편이 가장 깔끔합니다.
+
+주의: 아래 작업은 `kv` secret engine 아래의 모든 secret을 삭제합니다.
+
+```bash
+docker exec -it \
+  -e CONFIRM_RESET_KV=bosspickseoul \
+  vault sh /vault/scripts/reset-kv-bosspickseoul.sh
+```
+
+그 다음 bootstrap으로 policy와 AppRole을 다시 반영합니다.
+
+```bash
+docker exec -it vault sh /vault/scripts/bootstrap-bosspickseoul.sh
+```
+
+Web UI 사용자를 같이 만들거나 갱신하려면 다음처럼 실행합니다.
+
+```bash
+docker exec -it \
+  -e VAULT_UI_USERNAME='username' \
+  -e VAULT_UI_PASSWORD='password' \
+  vault sh /vault/scripts/bootstrap-bosspickseoul.sh
+```
+
+정리 후 secret은 반드시 mount `kv` 아래의 `bosspickseoul/...` 경로에 저장합니다.
+
+```bash
+docker exec -i vault vault kv put -mount="kv" bosspickseoul/backend/dev/env env_file=@/dev/stdin < .env
+```
+
+조회:
+
+```bash
+docker exec -it vault vault kv get -mount="kv" bosspickseoul/backend/dev/env
 ```
 
 ## Bootstrap
@@ -230,6 +277,26 @@ Success! Uploaded policy: ui-bosspickseoul
 Vault Web UI에서 username/password로 로그인하려면 `userpass` auth method와 UI 사용자가 필요합니다. Vault를 다시 초기화할 필요는 없고, unseal과 root token 로그인 이후 bootstrap을 다시 실행하면 됩니다.
 
 비밀번호는 Git에 커밋하지 않고 실행 시점에만 환경변수로 전달합니다.
+
+bootstrap은 policy와 AppRole도 함께 갱신하므로 root token 또는 관리자 권한 token으로 실행해야 합니다. Web UI userpass 계정으로 로그인한 token은 보통 권한이 부족합니다.
+
+컨테이너 안에 root token으로 먼저 로그인:
+
+```bash
+docker exec -it vault vault login
+```
+
+또는 실행 시점에 token 전달:
+
+```bash
+docker exec -it \
+  -e VAULT_TOKEN='<root-token>' \
+  -e VAULT_UI_USERNAME='username' \
+  -e VAULT_UI_PASSWORD='password' \
+  vault sh /vault/scripts/bootstrap-bosspickseoul.sh
+```
+
+root token 로그인 후 실행:
 
 ```bash
 docker exec -it \
