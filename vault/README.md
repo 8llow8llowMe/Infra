@@ -28,7 +28,9 @@ vault/
 │   ├── jenkins-bosspickseoul.hcl
 │   └── backend-bosspickseoul.hcl
 ├── scripts/
-│   └── bootstrap-bosspickseoul.sh
+│   ├── bootstrap-bosspickseoul.sh
+│   ├── reset-kv-bosspickseoul.sh
+│   └── rotate-approle-secret.sh
 └── README.md
 ```
 
@@ -319,9 +321,99 @@ docker exec -it vault vault write auth/userpass/users/admin/password password='<
 docker exec -it vault vault delete auth/userpass/users/admin
 ```
 
-## AppRole 발급
+## AppRole 발급과 회전
 
-Bootstrap 이후 Jenkins와 backend-1 deploy agent가 사용할 AppRole 값을 발급합니다.
+Bootstrap 이후 Jenkins와 backend-1 deploy agent가 사용할 AppRole 값을 발급합니다. `role_id`는 role을 식별하는 값이고, `secret_id`는 비밀번호처럼 동작하는 값입니다. `secret_id` 원문은 Git, README, 이슈, 메신저에 남기지 않습니다.
+
+이 repo에서 IaC로 관리하는 범위:
+
+| 대상 | 관리 방식 |
+| --- | --- |
+| Vault policy | `policies/*.hcl` |
+| AppRole role 설정 | `scripts/bootstrap-bosspickseoul.sh` |
+| `role_id`, `secret_id` 발급 절차 | `scripts/rotate-approle-secret.sh` |
+| `secret_id` 원문 | Jenkins Credential 또는 별도 비밀 저장소 |
+
+### 1. bootstrap으로 role 설정 반영
+
+policy나 AppRole TTL, policy 매핑을 바꾼 경우 먼저 bootstrap을 다시 실행합니다. 이 작업은 root token 또는 관리자 권한 token이 필요합니다.
+
+```bash
+docker exec -it vault vault login
+docker exec -it vault sh /vault/scripts/bootstrap-bosspickseoul.sh
+```
+
+현재 bootstrap은 아래 AppRole을 생성하거나 갱신합니다.
+
+| role | policy | token TTL | max TTL | secret_id TTL | secret_id 사용 횟수 |
+| --- | --- | --- | --- | --- | --- |
+| `jenkins-bosspickseoul` | `jenkins-bosspickseoul` | `1h` | `4h` | `720h` | 무제한 |
+| `backend-bosspickseoul` | `backend-bosspickseoul` | `30m` | `2h` | `720h` | 무제한 |
+
+### 2. Jenkins용 role_id/secret_id 발급
+
+Jenkins controller가 Vault에 로그인할 때 사용할 값을 발급합니다.
+
+```bash
+docker exec -it vault sh /vault/scripts/rotate-approle-secret.sh jenkins-bosspickseoul
+```
+
+옵션 없이 실행해도 기본값은 Jenkins용 role입니다.
+
+```bash
+docker exec -it vault sh /vault/scripts/rotate-approle-secret.sh
+```
+
+출력 예시:
+
+```text
+role_name:
+jenkins-bosspickseoul
+
+role_id:
+...
+
+new_secret_id:
+...
+```
+
+Jenkins에는 아래처럼 등록합니다.
+
+| Jenkins Credential ID | 종류 | 값 |
+| --- | --- | --- |
+| `bosspickseoul-vault-role-id` | Secret text | 출력된 `role_id` |
+| `bosspickseoul-vault-secret-id` | Secret text | 출력된 `new_secret_id` |
+
+### 3. backend deploy/runtime용 값 발급
+
+backend deploy agent 또는 runtime 쪽에서 직접 Vault 로그인이 필요한 경우에만 발급합니다. Jenkins가 Vault를 읽고 deploy agent에 `.env.runtime`만 전달하는 구조라면 backend AppRole은 사용하지 않아도 됩니다.
+
+```bash
+docker exec -it vault sh /vault/scripts/rotate-approle-secret.sh backend-bosspickseoul
+```
+
+발급한 값은 backend-1 deploy agent의 비밀 저장소에 넣고, Git에는 저장하지 않습니다.
+
+### 4. secret_id 회전 절차
+
+`secret_id`가 노출됐거나 주기적으로 교체하려면 새 값을 발급하고 Jenkins Credential만 갱신합니다.
+
+1. 새 secret 발급:
+
+```bash
+docker exec -it vault sh /vault/scripts/rotate-approle-secret.sh jenkins-bosspickseoul
+```
+
+2. Jenkins에서 `bosspickseoul-vault-secret-id` 값을 새 `new_secret_id`로 교체합니다.
+3. `bosspickseoul-vault-role-id`는 role을 재생성하지 않았다면 보통 그대로 둡니다. 그래도 스크립트 출력값과 맞춰 갱신해도 문제 없습니다.
+4. Jenkins pipeline 또는 아래 AppRole 로그인 테스트를 실행합니다.
+5. 테스트가 성공하면 이전 `secret_id`는 운영상 폐기된 값으로 간주합니다.
+
+기존 `secret_id`를 즉시 무효화하려면 Vault의 `secret_id_accessor`가 필요합니다. 평소에는 새 값 발급 후 Jenkins credential을 갱신하는 방식으로 회전하고, 즉시 폐기가 필요한 사고 대응 상황에서는 관리자 token으로 accessor를 확인해 폐기합니다.
+
+### 5. 수동 발급 명령
+
+스크립트를 쓰지 않고 직접 발급할 수도 있습니다.
 
 Jenkins credential에 등록할 값:
 
@@ -337,13 +429,13 @@ docker exec -it vault vault read auth/approle/role/backend-bosspickseoul/role-id
 docker exec -it vault vault write -f auth/approle/role/backend-bosspickseoul/secret-id
 ```
 
-발급된 값은 다음처럼 관리합니다.
+발급한 값은 다음처럼 관리합니다.
 
-| 값                  | 저장 위치                     | 용도                   |
-| ------------------- | ----------------------------- | ---------------------- |
-| Jenkins `role_id`   | Jenkins Credential            | Vault 로그인용         |
-| Jenkins `secret_id` | Jenkins Credential            | Vault 로그인용         |
-| backend `role_id`   | backend-1 deploy agent secret | 필요 시 Vault 로그인용 |
+| 값 | 저장 위치 | 용도 |
+| --- | --- | --- |
+| Jenkins `role_id` | Jenkins Credential `bosspickseoul-vault-role-id` | Vault 로그인용 |
+| Jenkins `secret_id` | Jenkins Credential `bosspickseoul-vault-secret-id` | Vault 로그인용 |
+| backend `role_id` | backend-1 deploy agent secret | 필요 시 Vault 로그인용 |
 | backend `secret_id` | backend-1 deploy agent secret | 필요 시 Vault 로그인용 |
 
 `secret_id`는 비밀번호처럼 취급합니다. Git에 커밋하지 않습니다.
