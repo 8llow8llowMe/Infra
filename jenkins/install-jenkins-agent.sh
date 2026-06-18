@@ -32,7 +32,10 @@ fi
 
 mkdir -p "./$JENKINS_DEPLOY_AGENT_WORKDIR"
 
-docker compose --env-file .env -f docker-compose-jenkins-deploy-agent.yml up -d --build
+docker compose --env-file .env -f docker-compose-jenkins-deploy-agent.yml up -d --build --force-recreate
 
 echo "Jenkins deploy agent가 시작되었습니다."
 echo "로그 확인: docker logs -f $JENKINS_DEPLOY_AGENT_CONTAINER_NAME"
+
+echo "Docker CLI 확인:"
+docker exec "$JENKINS_DEPLOY_AGENT_CONTAINER_NAME" sh -lc 'command -v docker && docker --version && docker compose version'

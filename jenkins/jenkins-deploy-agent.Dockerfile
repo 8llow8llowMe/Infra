@@ -3,12 +3,15 @@
 # builder agent보다 가볍게 유지하기 위해 Node.js, pnpm, yarn, Gradle 캐시는 포함하지 않습니다.
 
 FROM eclipse-temurin:21-jdk-jammy AS jdk
+FROM docker:27.3.1-cli AS docker-cli
 
 FROM jenkins/inbound-agent:latest-jdk17
 
 USER root
 
 COPY --from=jdk /opt/java/openjdk /opt/java/openjdk21
+COPY --from=docker-cli /usr/local/bin/docker /usr/local/bin/docker
+COPY --from=docker-cli /usr/local/libexec/docker/cli-plugins /usr/local/libexec/docker/cli-plugins
 
 ENV JAVA_HOME=/opt/java/openjdk21
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
@@ -17,7 +20,6 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
-    docker.io \
     git \
     gnupg \
     gosu \
@@ -28,19 +30,9 @@ RUN apt-get update \
     tini \
     unzip \
     wget \
- && mkdir -p /usr/libexec/docker/cli-plugins \
- && arch="$(uname -m)" \
- && case "$arch" in \
-      x86_64) buildx_arch="amd64"; compose_arch="x86_64" ;; \
-      aarch64|arm64) buildx_arch="arm64"; compose_arch="aarch64" ;; \
-      armv7l) buildx_arch="arm-v7"; compose_arch="armv7" ;; \
-      *) echo "Unsupported architecture: $arch"; exit 1 ;; \
-    esac \
- && curl -fsSL "https://github.com/docker/buildx/releases/download/v0.17.1/buildx-v0.17.1.linux-${buildx_arch}" \
-    -o /usr/libexec/docker/cli-plugins/docker-buildx \
- && curl -fsSL "https://github.com/docker/compose/releases/download/v2.30.3/docker-compose-linux-${compose_arch}" \
-    -o /usr/libexec/docker/cli-plugins/docker-compose \
- && chmod +x /usr/libexec/docker/cli-plugins/docker-buildx /usr/libexec/docker/cli-plugins/docker-compose \
+ && command -v docker \
+ && docker --version \
+ && docker compose version \
  && mkdir -p /home/jenkins/.ssh \
  && chown -R jenkins:jenkins /home/jenkins \
  && rm -rf /var/lib/apt/lists/*
