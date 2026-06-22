@@ -3,6 +3,7 @@ services:
     image: ${PROMETHEUS_IMAGE}
     container_name: ${PROMETHEUS_CONTAINER_NAME}
     restart: unless-stopped
+    # 설정 reload API를 켜서 target 변경 시 컨테이너 재시작 없이 반영합니다.
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
@@ -31,13 +32,12 @@ services:
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
-      GF_SERVER_DOMAIN: ${GRAFANA_DOMAIN}
-      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL}
       GF_USERS_ALLOW_SIGN_UP: 'false'
       TZ: ${TZ}
     ports:
       - '${GRAFANA_PORT}:3000'
     volumes:
+      # Grafana 데이터와 datasource provisioning 설정을 분리해 관리합니다.
       - ./grafana-data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
     networks:
@@ -52,6 +52,7 @@ services:
     image: ${NODE_EXPORTER_IMAGE}
     container_name: ${NODE_EXPORTER_CONTAINER_NAME}
     restart: unless-stopped
+    # 컨테이너 내부에서 호스트의 proc/sys/rootfs를 읽어 host metric을 노출합니다.
     command:
       - --path.procfs=/host/proc
       - --path.sysfs=/host/sys
@@ -60,6 +61,7 @@ services:
     ports:
       - '${NODE_EXPORTER_PORT}:9100'
     volumes:
+      # node_exporter가 컨테이너가 아닌 호스트 기준 지표를 읽기 위한 마운트입니다.
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
       - /:/rootfs:ro,rslave

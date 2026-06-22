@@ -1,0 +1,24 @@
+services:
+  promtail:
+    image: ${PROMTAIL_IMAGE}
+    container_name: ${PROMTAIL_CONTAINER_NAME}
+    restart: unless-stopped
+    # 환경변수 기반 Loki push URL과 host/project 라벨을 promtail.yml에 주입합니다.
+    command:
+      - -config.file=/etc/promtail/promtail.yml
+      - -config.expand-env=true
+    environment:
+      LOKI_PUSH_URL: ${LOKI_PUSH_URL}
+      PROMTAIL_HOSTNAME: ${PROMTAIL_HOSTNAME}
+      PROMTAIL_PROJECT: ${PROMTAIL_PROJECT}
+      TZ: ${TZ}
+    volumes:
+      # Docker socket을 읽어 컨테이너 로그와 라벨을 자동 탐색합니다.
+      - ./promtail.yml:/etc/promtail/promtail.yml:ro
+      - ./data:/tmp
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'

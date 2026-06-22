@@ -1,40 +1,82 @@
 global:
-  scrape_interval: 15s
-  evaluation_interval: 15s
+  scrape_interval: 30s
+  evaluation_interval: 30s
 
 scrape_configs:
   - job_name: prometheus
     static_configs:
       - targets:
           - prometheus:9090
+        labels:
+          instance: deploy
+          project: infra
 
   - job_name: node
     static_configs:
-      # deploy 서버 자신은 같은 compose 안의 node-exporter로 수집합니다.
       - targets:
           - node-exporter:9100
         labels:
           instance: deploy
-          role: deploy-agent
+          role: monitoring
+          project: infra
 
-      # 다른 서버에도 node_exporter를 설치한 뒤 아래 예시를 활성화하세요.
-      # - targets:
-      #     - 192.168.0.10:9100
-      #   labels:
-      #     instance: ollama-01
-      #     role: ai-ci
-      # - targets:
-      #     - 192.168.0.20:9100
-      #   labels:
-      #     instance: backend-1
-      #     role: backend
-      # - targets:
-      #     - 192.168.0.30:9100
-      #   labels:
-      #     instance: raspberrypi
-      #     role: database
-      # - targets:
-      #     - 192.168.0.40:9100
-      #   labels:
-      #     instance: storage
-      #     role: edge-storage
+      # backend-1 호스트입니다. backend-1에서 node-exporter/docker-compose.agent.yml을 먼저 실행하세요.
+      - targets:
+          - 192.168.0.11:9100
+        labels:
+          instance: backend-1
+          role: backend
+          project: bosspickseoul
+
+  - job_name: bosspickseoul-backend-dev
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - 192.168.0.11:6761
+        labels:
+          project: bosspickseoul
+          env: dev
+          service: service-discovery
+          host: backend-1
+      - targets:
+          - 192.168.0.11:6000
+        labels:
+          project: bosspickseoul
+          env: dev
+          service: api-gateway
+          host: backend-1
+      - targets:
+          - 192.168.0.11:6081
+        labels:
+          project: bosspickseoul
+          env: dev
+          service: auth-service
+          host: backend-1
+      - targets:
+          - 192.168.0.11:6082
+        labels:
+          project: bosspickseoul
+          env: dev
+          service: district-service
+          host: backend-1
+      - targets:
+          - 192.168.0.11:6083
+        labels:
+          project: bosspickseoul
+          env: dev
+          service: commercial-service
+          host: backend-1
+      - targets:
+          - 192.168.0.11:6085
+        labels:
+          project: bosspickseoul
+          env: dev
+          service: ai-service
+          host: backend-1
+      - targets:
+          - 192.168.0.11:6086
+        labels:
+          project: bosspickseoul
+          env: dev
+          service: community-service
+          host: backend-1

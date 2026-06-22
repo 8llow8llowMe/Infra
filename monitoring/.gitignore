@@ -1,4 +1,9 @@
 .env
+.env.host-agent
+node-exporter/.env.agent
+promtail/.env.agent
 prometheus-data/
 grafana-data/
-
+loki-data/
+promtail-data/
+promtail/data/
