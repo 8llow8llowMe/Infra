@@ -1,0 +1,30 @@
+services:
+  node-exporter:
+    image: ${NODE_EXPORTER_IMAGE}
+    container_name: ${NODE_EXPORTER_CONTAINER_NAME}
+    restart: unless-stopped
+    # 컨테이너 내부에서 호스트의 proc/sys/rootfs를 읽어 host metric을 노출합니다.
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --path.rootfs=/rootfs
+      - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc|run/docker/netns)($$|/)
+    ports:
+      - '${NODE_EXPORTER_PORT}:9100'
+    volumes:
+      # node_exporter가 컨테이너가 아닌 호스트 기준 지표를 읽기 위한 마운트입니다.
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro,rslave
+    networks:
+      - 8llow8llowme-net
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+networks:
+  8llow8llowme-net:
+    name: 8llow8llowme-net
+    driver: bridge

@@ -1,0 +1,29 @@
+services:
+  prometheus:
+    image: ${PROMETHEUS_IMAGE}
+    container_name: ${PROMETHEUS_CONTAINER_NAME}
+    restart: unless-stopped
+    # 설정 reload API를 켜서 target 변경 시 컨테이너 재시작 없이 반영합니다.
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION_TIME}
+      - --storage.tsdb.retention.size=${PROMETHEUS_RETENTION_SIZE}
+      - --web.enable-lifecycle
+    ports:
+      - '${PROMETHEUS_PORT}:9090'
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus-data:/prometheus
+    networks:
+      - 8llow8llowme-net
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+networks:
+  8llow8llowme-net:
+    name: 8llow8llowme-net
+    driver: bridge

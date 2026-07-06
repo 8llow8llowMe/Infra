@@ -1,0 +1,30 @@
+services:
+  grafana:
+    image: ${GRAFANA_IMAGE}
+    container_name: ${GRAFANA_CONTAINER_NAME}
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+      TZ: ${TZ}
+    ports:
+      - '${GRAFANA_PORT}:3000'
+    volumes:
+      # Grafana 데이터와 datasource provisioning 설정을 분리해 관리합니다.
+      - ./grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - 8llow8llowme-net
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+networks:
+  8llow8llowme-net:
+    name: 8llow8llowme-net
+    driver: bridge

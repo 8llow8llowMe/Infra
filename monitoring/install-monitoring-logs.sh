@@ -25,9 +25,9 @@ else
   echo "  sudo chown -R 10001:10001 loki-data"
 fi
 
-docker compose --env-file .env \
-  -f docker-compose-monitoring-core.yml \
-  -f docker-compose-monitoring-logs.yml \
+docker compose --project-directory . --env-file .env \
+  -f loki/docker-compose-loki.yml \
+  -f promtail/docker-compose-promtail.yml \
   up -d loki promtail
 
 echo ""

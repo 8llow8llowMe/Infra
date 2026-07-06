@@ -17,7 +17,7 @@ Promtail은 각 서버의 Docker 컨테이너 로그를 Loki로 전송하는 로
 cd monitoring/promtail
 cp .env.agent.example .env.agent
 vi .env.agent
-docker compose --env-file .env.agent -f docker-compose.agent.yml up -d
+sh install-promtail.sh
 ```
 
 ## 주요 환경변수

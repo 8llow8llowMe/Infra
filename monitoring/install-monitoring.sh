@@ -47,7 +47,11 @@ else
   echo "  sudo chown -R 10001:10001 loki-data"
 fi
 
-docker compose --env-file .env -f docker-compose-monitoring-core.yml up -d
+docker compose --project-directory . --env-file .env \
+  -f prometheus/docker-compose-prometheus.yml \
+  -f node-exporter/docker-compose-node-exporter.yml \
+  -f grafana/docker-compose-grafana.yml \
+  up -d
 
 echo ""
 echo "모니터링 기본 스택이 시작되었습니다."
@@ -55,7 +59,7 @@ echo "Grafana:    http://localhost:$(get_env_value GRAFANA_PORT)"
 echo "Prometheus: http://localhost:$(get_env_value PROMETHEUS_PORT)"
 echo ""
 echo "Loki/Promtail까지 켜려면 다음 명령을 사용하세요."
-echo "  docker compose --env-file .env -f docker-compose-monitoring-core.yml -f docker-compose-monitoring-logs.yml up -d"
+echo "  sh install-monitoring-logs.sh"
 echo ""
 echo "로그 확인:"
 echo "  docker logs -f grafana"

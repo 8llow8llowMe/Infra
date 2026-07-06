@@ -8,7 +8,7 @@ if [ ! -f ./.env.agent ]; then
   echo ".env.agent.example을 복사해 .env.agent를 생성했습니다."
 fi
 
-docker compose --env-file .env.agent -f docker-compose.agent.yml up -d
+docker compose --env-file .env.agent -f docker-compose-agent.yml up -d
 
 echo ""
 echo "node_exporter 에이전트가 시작되었습니다."

@@ -9,7 +9,7 @@
 - DB/Redis 서버
 - monitoring 서버 외 추가로 관측할 모든 호스트
 
-monitoring 서버 자신은 상위 `docker-compose-monitoring-core.yml`에 포함된 node_exporter를 사용합니다.
+monitoring 서버 자신은 `node-exporter/docker-compose-node-exporter.yml`에 정의된 node_exporter를 사용합니다.
 
 ## 실행
 
@@ -23,7 +23,7 @@ sh install-node-exporter.sh
 직접 실행하려면:
 
 ```bash
-docker compose --env-file .env.agent -f docker-compose.agent.yml up -d
+docker compose --env-file .env.agent -f docker-compose-agent.yml up -d
 ```
 
 ## Prometheus target 추가

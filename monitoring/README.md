@@ -35,6 +35,26 @@ BossPickSeoul과 홈서버 인프라를 관측하기 위한 Grafana, Prometheus,
 
 즉, **모든 서버의 CPU/RAM/DISK를 보고 싶으면 모든 서버에 node_exporter를 실행해야 합니다.**
 
+## 최종 개념
+
+모니터링 구성은 저장소와 수집 에이전트를 분리해서 이해하면 됩니다.
+
+| 구성요소 | 위치 | 개념 |
+| --- | --- | --- |
+| Grafana | monitoring 서버 | Prometheus/Loki 데이터를 보여주는 대시보드 |
+| Prometheus | monitoring 서버 | 각 서버와 앱의 metrics를 가져오는 중앙 수집기 |
+| Loki | monitoring 서버 | 여러 서버의 logs를 저장하는 중앙 저장소 |
+| node_exporter | 관측할 모든 서버 | 해당 서버의 CPU/RAM/DISK metrics를 노출 |
+| Promtail | 로그를 수집할 모든 서버 | 해당 서버의 Docker logs를 Loki로 전송 |
+
+즉, **Promtail은 로그가 발생하는 서버마다 하나씩 실행하고, Loki는 중앙 monitoring 서버에 하나만 실행합니다.**
+
+```text
+metrics: Prometheus가 각 서버의 node_exporter/Actuator를 가져옵니다.
+logs: 각 서버의 Promtail이 중앙 Loki로 보냅니다.
+view: Grafana가 Prometheus와 Loki를 보여줍니다.
+```
+
 ## 권장 배치
 
 ```text
@@ -56,27 +76,28 @@ deploy 서버가 Raspberry Pi 5 2GB라면 `Grafana + Prometheus + node_exporter`
 
 ```text
 monitoring/
-├── docker-compose-monitoring-core.yml
-├── docker-compose-monitoring-logs.yml
-├── docker-compose-host-agent.yml
 ├── .env.example
-├── .env.host-agent.example
 ├── install-monitoring.sh
 ├── install-monitoring-logs.sh
 ├── prometheus/
+│   ├── docker-compose-prometheus.yml
 │   └── prometheus.yml
 ├── grafana/
+│   ├── docker-compose-grafana.yml
 │   └── provisioning/datasources/
 │       ├── prometheus.yml
 │       └── loki.yml
 ├── loki/
+│   ├── docker-compose-loki.yml
 │   └── loki.yml
 ├── node-exporter/
-│   ├── docker-compose.agent.yml
+│   ├── docker-compose-node-exporter.yml
+│   ├── docker-compose-agent.yml
 │   ├── .env.agent.example
 │   └── README.md
 └── promtail/
-    ├── docker-compose.agent.yml
+    ├── docker-compose-promtail.yml
+    ├── docker-compose-agent.yml
     ├── .env.agent.example
     ├── promtail.yml
     └── README.md
@@ -84,13 +105,17 @@ monitoring/
 
 ## Docker Compose 파일 기준
 
+모니터링 서버용 compose는 `monitoring` 루트에서 `--project-directory .` 옵션과 함께 실행합니다. 애플리케이션 서버용 agent compose는 각 agent 폴더에서 실행합니다.
+
 | 파일 | 실행 위치 | 역할 |
 | --- | --- | --- |
-| `docker-compose-monitoring-core.yml` | monitoring 서버 | Grafana, Prometheus, monitoring 서버 node_exporter |
-| `docker-compose-monitoring-logs.yml` | monitoring 서버 | Loki, monitoring 서버 Promtail |
-| `docker-compose-host-agent.yml` | 애플리케이션 서버 | node_exporter + Promtail 통합 실행 |
-| `node-exporter/docker-compose.agent.yml` | 애플리케이션 서버 | node_exporter만 실행 |
-| `promtail/docker-compose.agent.yml` | 애플리케이션 서버 | Promtail만 실행 |
+| `prometheus/docker-compose-prometheus.yml` | monitoring 서버 | Prometheus |
+| `grafana/docker-compose-grafana.yml` | monitoring 서버 | Grafana |
+| `node-exporter/docker-compose-node-exporter.yml` | monitoring 서버 | monitoring 서버 node_exporter |
+| `loki/docker-compose-loki.yml` | monitoring 서버 | Loki |
+| `promtail/docker-compose-promtail.yml` | monitoring 서버 | monitoring 서버 Promtail |
+| `node-exporter/docker-compose-agent.yml` | 애플리케이션 서버 | node_exporter만 실행 |
+| `promtail/docker-compose-agent.yml` | 애플리케이션 서버 | Promtail만 실행 |
 
 ## monitoring 서버 실행 순서
 
@@ -111,6 +136,9 @@ vi .env
 | `PROMETHEUS_RETENTION_TIME` | Prometheus 데이터 보관 기간 |
 | `PROMETHEUS_RETENTION_SIZE` | Prometheus 데이터 최대 크기 |
 | `LOKI_RETENTION_PERIOD` | Loki 로그 보관 기간 |
+| `MONITORING_PROMTAIL_LOKI_PUSH_URL` | monitoring 서버 Promtail이 로그를 보낼 Loki push URL |
+| `MONITORING_PROMTAIL_HOSTNAME` | monitoring 서버 로그에 붙일 host 라벨 |
+| `MONITORING_PROMTAIL_PROJECT` | monitoring 서버 로그에 붙일 project 라벨 |
 
 ### 2. 기본 스택 실행
 
@@ -121,7 +149,11 @@ sh install-monitoring.sh
 직접 실행하려면:
 
 ```bash
-docker compose --env-file .env -f docker-compose-monitoring-core.yml up -d
+docker compose --project-directory . --env-file .env \
+  -f prometheus/docker-compose-prometheus.yml \
+  -f node-exporter/docker-compose-node-exporter.yml \
+  -f grafana/docker-compose-grafana.yml \
+  up -d
 ```
 
 기본 스택에 포함되는 서비스:
@@ -143,9 +175,9 @@ sh install-monitoring-logs.sh
 직접 실행하려면:
 
 ```bash
-docker compose --env-file .env \
-  -f docker-compose-monitoring-core.yml \
-  -f docker-compose-monitoring-logs.yml \
+docker compose --project-directory . --env-file .env \
+  -f loki/docker-compose-loki.yml \
+  -f promtail/docker-compose-promtail.yml \
   up -d
 ```
 
@@ -159,9 +191,9 @@ docker compose --env-file .env \
 Loki/Promtail만 중지:
 
 ```bash
-docker compose --env-file .env \
-  -f docker-compose-monitoring-core.yml \
-  -f docker-compose-monitoring-logs.yml \
+docker compose --project-directory . --env-file .env \
+  -f loki/docker-compose-loki.yml \
+  -f promtail/docker-compose-promtail.yml \
   stop loki promtail
 ```
 
@@ -202,7 +234,7 @@ Docker 컨테이너 로그를 Loki로 보내고 싶은 서버에서 실행합니
 cd monitoring/promtail
 cp .env.agent.example .env.agent
 vi .env.agent
-docker compose --env-file .env.agent -f docker-compose.agent.yml up -d
+sh install-promtail.sh
 ```
 
 중요 환경변수:
@@ -221,19 +253,18 @@ PROMTAIL_PROJECT=bosspickseoul
 
 ## 애플리케이션 서버에서 node_exporter + Promtail 같이 실행
 
-두 agent를 한 번에 관리하고 싶으면 root의 host-agent compose를 사용합니다.
+두 agent를 모두 켤 때도 각 폴더에서 하나씩 실행하는 방식을 권장합니다. 실행 위치가 분리되어 있어 어떤 agent를 설정하는지 명확합니다.
 
 ```bash
-cd monitoring
-cp .env.host-agent.example .env.host-agent
-vi .env.host-agent
-docker compose --env-file .env.host-agent -f docker-compose-host-agent.yml --profile logs up -d
-```
+cd monitoring/node-exporter
+cp .env.agent.example .env.agent
+vi .env.agent
+sh install-node-exporter.sh
 
-Promtail 없이 node_exporter만 기본 실행하려면 `--profile logs`를 빼면 됩니다.
-
-```bash
-docker compose --env-file .env.host-agent -f docker-compose-host-agent.yml up -d
+cd ../promtail
+cp .env.agent.example .env.agent
+vi .env.agent
+sh install-promtail.sh
 ```
 
 ## BossPickSeoul 백엔드 메트릭 수집

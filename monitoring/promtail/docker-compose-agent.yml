@@ -15,7 +15,7 @@ services:
     volumes:
       # Docker socket을 읽어 컨테이너 로그와 라벨을 자동 탐색합니다.
       - ./promtail.yml:/etc/promtail/promtail.yml:ro
-      - ./data:/tmp
+      - ./promtail-data:/tmp
       - /var/run/docker.sock:/var/run/docker.sock:ro
     logging:
       driver: json-file
