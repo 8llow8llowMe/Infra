@@ -50,7 +50,7 @@ vault write auth/approle/role/jenkins-bosspickseoul \
   token_policies="jenkins-bosspickseoul" \
   token_ttl="1h" \
   token_max_ttl="4h" \
-  secret_id_ttl="720h" \
+  secret_id_ttl="0" \
   secret_id_num_uses="0"
 
 vault write auth/approle/role/backend-bosspickseoul \

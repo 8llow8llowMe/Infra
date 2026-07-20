@@ -347,7 +347,7 @@ docker exec -it vault sh /vault/scripts/bootstrap-bosspickseoul.sh
 
 | role | policy | token TTL | max TTL | secret_id TTL | secret_id 사용 횟수 |
 | --- | --- | --- | --- | --- | --- |
-| `jenkins-bosspickseoul` | `jenkins-bosspickseoul` | `1h` | `4h` | `720h` | 무제한 |
+| `jenkins-bosspickseoul` | `jenkins-bosspickseoul` | `1h` | `4h` | `만료 없음 (0)` | 무제한 |
 | `backend-bosspickseoul` | `backend-bosspickseoul` | `30m` | `2h` | `720h` | 무제한 |
 
 ### 2. Jenkins용 role_id/secret_id 발급
@@ -396,7 +396,7 @@ docker exec -it vault sh /vault/scripts/rotate-approle-secret.sh backend-bosspic
 
 ### 4. secret_id 회전 절차
 
-`secret_id`가 노출됐거나 주기적으로 교체하려면 새 값을 발급하고 Jenkins Credential만 갱신합니다.
+Jenkins용 `secret_id`는 기본 IaC 기준으로 만료 없이 운영합니다. 따라서 30일 같은 주기 만료로 빌드가 깨지지는 않아야 합니다. 다만 값이 노출됐거나 보안 점검 차원에서 직접 회전하려는 경우에는 새 값을 발급하고 Jenkins Credential만 갱신합니다.
 
 1. 새 secret 발급:
 
