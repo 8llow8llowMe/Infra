@@ -14,6 +14,7 @@ services:
       - '${PROMETHEUS_PORT}:9090'
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/targets:/etc/prometheus/targets:ro
       - ./prometheus-data:/prometheus
     networks:
       - 8llow8llowme-net

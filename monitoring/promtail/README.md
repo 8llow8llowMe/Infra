@@ -28,6 +28,8 @@ sh install-promtail.sh
 | `PROMTAIL_HOSTNAME` | 로그가 발생한 서버명 | `backend-1` |
 | `PROMTAIL_PROJECT` | Grafana/Loki에서 필터링할 프로젝트명 | `bosspickseoul` |
 
+Promtail은 Docker Compose 서비스명이 `auth-service-dev`, `api-gateway-prod`처럼 끝나는 컨테이너에 대해 `service`, `env` 라벨을 자동으로 붙입니다. 그래서 Grafana Loki에서 BosspickSeoul 로그를 메트릭 라벨과 비슷한 축으로 바로 조회할 수 있습니다.
+
 ## Grafana Loki 쿼리 예시
 
 ```logql
@@ -35,5 +37,5 @@ sh install-promtail.sh
 ```
 
 ```logql
-{project="bosspickseoul", container=~".*auth-service.*"} |= "ERROR"
+{project="bosspickseoul", service="auth-service", env="dev"} |= "ERROR"
 ```

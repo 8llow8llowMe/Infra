@@ -32,7 +32,7 @@ node_exporter를 띄운 뒤 monitoring 서버의 `prometheus/prometheus.yml`에 
 
 ```yaml
 - targets:
-    - 192.168.0.11:9100
+    - 192.168.0.13:9100
   labels:
     instance: backend-1
     role: backend

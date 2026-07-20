@@ -1,0 +1,12 @@
+- labels:
+    instance: deploy
+    role: monitoring
+    project: infra
+  targets:
+    - node-exporter:9100
+- labels:
+    instance: backend-1
+    role: backend
+    project: bosspickseoul
+  targets:
+    - 192.168.0.13:9100

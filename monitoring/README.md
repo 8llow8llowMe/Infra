@@ -208,11 +208,11 @@ vi .env.agent
 sh install-node-exporter.sh
 ```
 
-이후 monitoring 서버의 `prometheus/prometheus.yml`에 해당 서버 target을 추가합니다.
+이후 monitoring 서버의 `prometheus/targets/nodes.yml`에 해당 서버 target을 추가합니다.
 
 ```yaml
 - targets:
-    - 192.168.0.11:9100
+    - 192.168.0.13:9100
   labels:
     instance: backend-1
     role: backend
@@ -271,17 +271,17 @@ sh install-promtail.sh
 
 백엔드 서비스는 Spring Actuator의 `/actuator/prometheus` 엔드포인트를 Prometheus가 scrape합니다.
 
-현재 `prometheus/prometheus.yml`에는 backend-1 IP를 `192.168.0.11`로 가정해 dev 컨테이너 포트를 등록했습니다.
+현재 `prometheus/targets/bosspickseoul-backend-dev.yml`에는 backend-1 IP를 `192.168.0.13`으로 가정해 dev 컨테이너 포트를 등록했습니다. DB 서버 `192.168.0.11`은 backend actuator 대상이 아니라 별도 node_exporter / promtail 대상입니다. 새 환경을 추가할 때는 `prometheus.yml`을 직접 수정하기보다 `prometheus/targets/` 아래에 환경별 target 파일을 추가하는 방식을 권장합니다.
 
 | 서비스 | scrape target |
 | --- | --- |
-| service-discovery | `192.168.0.11:6761/actuator/prometheus` |
-| api-gateway | `192.168.0.11:6000/actuator/prometheus` |
-| auth-service | `192.168.0.11:6081/actuator/prometheus` |
-| district-service | `192.168.0.11:6082/actuator/prometheus` |
-| commercial-service | `192.168.0.11:6083/actuator/prometheus` |
-| ai-service | `192.168.0.11:6085/actuator/prometheus` |
-| community-service | `192.168.0.11:6086/actuator/prometheus` |
+| service-discovery | `192.168.0.13:6761/actuator/prometheus` |
+| api-gateway | `192.168.0.13:6000/actuator/prometheus` |
+| auth-service | `192.168.0.13:6081/actuator/prometheus` |
+| district-service | `192.168.0.13:6082/actuator/prometheus` |
+| commercial-service | `192.168.0.13:6083/actuator/prometheus` |
+| ai-service | `192.168.0.13:6085/actuator/prometheus` |
+| community-service | `192.168.0.13:6086/actuator/prometheus` |
 
 ## Grafana 대시보드 추천
 
@@ -319,7 +319,7 @@ curl http://localhost:9100/metrics
 Spring Actuator:
 
 ```bash
-curl http://192.168.0.11:6081/actuator/prometheus
+curl http://192.168.0.13:6081/actuator/prometheus
 ```
 
 Loki:

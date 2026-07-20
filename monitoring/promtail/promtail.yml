@@ -17,6 +17,14 @@ scrape_configs:
       - source_labels: [__meta_docker_container_name]
         regex: /(.+)
         target_label: container
+      - source_labels: [__meta_docker_container_label_com_docker_compose_service]
+        regex: (.+)-(dev|prod)
+        replacement: $1
+        target_label: service
+      - source_labels: [__meta_docker_container_label_com_docker_compose_service]
+        regex: (.+)-(dev|prod)
+        replacement: $2
+        target_label: env
       - source_labels: [__meta_docker_container_label_com_docker_compose_project]
         target_label: compose_project
       - source_labels: [__meta_docker_container_label_com_docker_compose_service]
@@ -25,5 +33,7 @@ scrape_configs:
         replacement: ${PROMTAIL_HOSTNAME}
       - target_label: project
         replacement: ${PROMTAIL_PROJECT}
+      - target_label: job
+        replacement: docker
     pipeline_stages:
       - docker: {}
