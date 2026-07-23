@@ -351,3 +351,42 @@ docker logs -f nginx
 - 도메인별 네이밍 규칙 일관화
 - 운영/개발 환경 분리
 - 설정 검증 자동화(`nginx -t`)를 CI에 추가
+
+---
+
+## BossPickSeoul domain map
+
+- `https://www.bosspickseoul.com` -> production web (`web-ssr:3000`)
+- `https://api.bosspickseoul.com` -> production API gateway (`192.168.0.13:9000`)
+- `https://api-dev.bosspickseoul.com` -> development API gateway (`192.168.0.13:6000`)
+
+### DNS checklist
+
+- `bosspickseoul.com` A/AAAA -> public Nginx host
+- `www.bosspickseoul.com` A/AAAA or CNAME -> public Nginx host
+- `api.bosspickseoul.com` A/AAAA or CNAME -> public Nginx host
+- `api-dev.bosspickseoul.com` A/AAAA or CNAME -> public Nginx host
+
+### Certbot checklist
+
+- `bosspickseoul.com` certificate covers `bosspickseoul.com` and `www.bosspickseoul.com`
+- `api.bosspickseoul.com` needs its own certificate
+- `api-dev.bosspickseoul.com` needs its own certificate
+
+Example commands:
+
+```bash
+cd ~/infra/nginx
+sh create-ssl-bootstrap-conf.sh api-dev.bosspickseoul.com non-www api-dev-bosspickseoul
+docker exec nginx nginx -t
+docker exec nginx nginx -s reload
+
+cd ~/infra/certbot
+./init-cert-non-www.sh api-dev.bosspickseoul.com
+```
+
+### Dev access log
+
+- dedicated log file: `/var/log/nginx/bosspickseoul_dev_access.log`
+- follow it with `docker exec nginx tail -f /var/log/nginx/bosspickseoul_dev_access.log`
+- the dev API server also keeps writing to the global `/var/log/nginx/access.log`
