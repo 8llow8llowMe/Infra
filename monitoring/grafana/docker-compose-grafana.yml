@@ -9,6 +9,11 @@ services:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
       GF_USERS_ALLOW_SIGN_UP: 'false'
+      # 프로비저닝된 BossPickSeoul 백엔드 개요를 기본 홈 화면으로 사용합니다.
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/BossPickSeoul/01-backend-overview.json
+      # 동적 대시보드(탭/auto-grid, v2 스키마)를 쓰려면 아래 토글을 켭니다.
+      # 현재 대시보드는 안정적인 classic 스키마이므로 기본은 비활성입니다.
+      # GF_FEATURE_TOGGLES_ENABLE: 'kubernetesDashboards,dashboardNewLayouts'
       TZ: ${TZ}
     ports:
       - '${GRAFANA_PORT}:3000'

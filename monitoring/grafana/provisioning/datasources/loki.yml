@@ -1,8 +1,13 @@
 apiVersion: 1
 
+# 대시보드 JSON은 고정 uid(loki)로 참조합니다.
 datasources:
   - name: Loki
+    uid: loki
     type: loki
     access: proxy
     url: http://loki:3100
-    editable: true
+    editable: false
+    jsonData:
+      # 로그 패널 1회 조회 상한. 라즈베리파이 메모리를 고려한 값입니다.
+      maxLines: 1000
