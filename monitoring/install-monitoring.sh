@@ -28,7 +28,9 @@ mkdir -p \
   ./prometheus \
   ./loki \
   ./promtail \
-  ./grafana/provisioning/datasources
+  ./grafana/provisioning/datasources \
+  ./grafana/provisioning/dashboards \
+  ./grafana/dashboards
 
 # Grafana는 UID 472, Prometheus는 UID 65534, Loki는 UID 10001로 쓰기 권한이 필요합니다.
 if [ "$(id -u)" -eq 0 ]; then

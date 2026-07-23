@@ -17,6 +17,10 @@ scrape_configs:
       - source_labels: [__meta_docker_container_name]
         regex: /(.+)
         target_label: container
+      - source_labels: [__meta_docker_container_name]
+        regex: /(.+)
+        replacement: $1
+        target_label: deployment
       - source_labels: [__meta_docker_container_label_com_docker_compose_service]
         regex: (.+)-(dev|prod)
         replacement: $1
@@ -25,6 +29,18 @@ scrape_configs:
         regex: (.+)-(dev|prod)
         replacement: $2
         target_label: env
+      - source_labels: [__meta_docker_container_label_com_docker_compose_service]
+        regex: (.+)-(dev|prod)
+        replacement: service
+        target_label: service_group
+      - source_labels: [__meta_docker_container_label_com_docker_compose_service]
+        regex: (service-discovery|api-gateway)-(dev|prod)
+        replacement: cloud
+        target_label: service_group
+      - source_labels: [service]
+        regex: (.+)
+        replacement: $1
+        target_label: application
       - source_labels: [__meta_docker_container_label_com_docker_compose_project]
         target_label: compose_project
       - source_labels: [__meta_docker_container_label_com_docker_compose_service]
@@ -33,7 +49,33 @@ scrape_configs:
         replacement: ${PROMTAIL_HOSTNAME}
       - target_label: project
         replacement: ${PROMTAIL_PROJECT}
-      - target_label: job
-        replacement: docker
+      - source_labels: [__meta_docker_container_label_observability_project]
+        regex: (.+)
+        replacement: $1
+        target_label: project
+      - source_labels: [__meta_docker_container_label_observability_group]
+        regex: (.+)
+        replacement: $1
+        target_label: service_group
+      - source_labels: [__meta_docker_container_label_observability_service]
+        regex: (.+)
+        replacement: $1
+        target_label: service
+      - source_labels: [__meta_docker_container_label_observability_env]
+        regex: (.+)
+        replacement: $1
+        target_label: env
+      - source_labels: [__meta_docker_container_label_observability_application]
+        regex: (.+)
+        replacement: $1
+        target_label: application
+      - source_labels: [__meta_docker_container_label_observability_deployment]
+        regex: (.+)
+        replacement: $1
+        target_label: deployment
+      - source_labels: [project, service_group]
+        regex: (.+);(.+)
+        replacement: $1-$2
+        target_label: job
     pipeline_stages:
       - docker: {}

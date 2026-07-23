@@ -1,0 +1,56 @@
+{
+  "id": null,
+  "uid": "bosspickseoul-jvm",
+  "title": "BossPickSeoul JVM 상세",
+  "tags": ["bosspickseoul", "backend", "jvm", "prometheus"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {"from": "now-1h", "to": "now"},
+  "templating": {
+    "list": [
+      {"name": "DS_PROMETHEUS", "label": "Prometheus", "type": "datasource", "query": "prometheus", "refresh": 1, "current": {}},
+      {"name": "project", "type": "constant", "query": "bosspickseoul", "hide": 2, "current": {"text": "bosspickseoul", "value": "bosspickseoul"}},
+      {"name": "env", "label": "Env", "type": "query", "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"}, "query": {"query": "label_values(jvm_info{project=\"$project\"}, env)", "refId": "VariableQuery"}, "refresh": 1, "includeAll": false, "multi": false, "current": {}},
+      {"name": "service", "label": "Service", "type": "query", "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"}, "query": {"query": "label_values(jvm_info{project=\"$project\", env=~\"$env\"}, service)", "refId": "VariableQuery"}, "refresh": 1, "includeAll": true, "multi": true, "allValue": ".*", "current": {}},
+      {"name": "instance", "label": "Instance", "type": "query", "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"}, "query": {"query": "label_values(jvm_info{project=\"$project\", env=~\"$env\", service=~\"$service\"}, instance)", "refId": "VariableQuery"}, "refresh": 1, "includeAll": true, "multi": true, "allValue": ".*", "current": {}}
+    ]
+  },
+  "panels": [
+    {
+      "id": 1, "type": "timeseries", "title": "힙 메모리 사용량 / 최대값", "gridPos": {"h": 9, "w": 12, "x": 0, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "targets": [
+        {"refId": "A", "editorMode": "code", "expr": "sum by (service) (jvm_memory_used_bytes{project=\"$project\", env=~\"$env\", service=~\"$service\", instance=~\"$instance\", area=\"heap\"})", "legendFormat": "{{service}} used"},
+        {"refId": "B", "editorMode": "code", "expr": "sum by (service) (jvm_memory_max_bytes{project=\"$project\", env=~\"$env\", service=~\"$service\", instance=~\"$instance\", area=\"heap\"})", "legendFormat": "{{service}} max"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "bytes"}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}}
+    },
+    {
+      "id": 2, "type": "timeseries", "title": "프로세스 CPU 사용률", "gridPos": {"h": 9, "w": 12, "x": 12, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "targets": [{"refId": "A", "editorMode": "code", "expr": "process_cpu_usage{project=\"$project\", env=~\"$env\", service=~\"$service\", instance=~\"$instance\"}", "legendFormat": "{{service}}"}],
+      "fieldConfig": {"defaults": {"unit": "percentunit", "min": 0, "max": 1}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}}
+    },
+    {
+      "id": 3, "type": "timeseries", "title": "활성 / 최대 스레드 수", "gridPos": {"h": 9, "w": 12, "x": 0, "y": 9},
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "targets": [
+        {"refId": "A", "editorMode": "code", "expr": "jvm_threads_live_threads{project=\"$project\", env=~\"$env\", service=~\"$service\", instance=~\"$instance\"}", "legendFormat": "{{service}} live"},
+        {"refId": "B", "editorMode": "code", "expr": "jvm_threads_peak_threads{project=\"$project\", env=~\"$env\", service=~\"$service\", instance=~\"$instance\"}", "legendFormat": "{{service}} peak"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}}
+    },
+    {
+      "id": 4, "type": "timeseries", "title": "GC 일시 정지 시간", "gridPos": {"h": 9, "w": 12, "x": 12, "y": 9},
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "targets": [{"refId": "A", "editorMode": "code", "expr": "sum by (service, action, cause) (rate(jvm_gc_pause_seconds_sum{project=\"$project\", env=~\"$env\", service=~\"$service\", instance=~\"$instance\"}[$__rate_interval]))", "legendFormat": "{{service}} {{action}} {{cause}}"}],
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}}
+    }
+  ]
+}

@@ -1,11 +1,11 @@
 - labels:
-    instance: deploy
+    host: deploy
     role: monitoring
     project: infra
   targets:
     - node-exporter:9100
 - labels:
-    instance: backend-1
+    host: backend-1
     role: backend
     project: bosspickseoul
   targets:

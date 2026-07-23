@@ -16,6 +16,7 @@ services:
       # Grafana 데이터와 datasource provisioning 설정을 분리해 관리합니다.
       - ./grafana-data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
     networks:
       - 8llow8llowme-net
     logging:
