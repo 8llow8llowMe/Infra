@@ -1,0 +1,21 @@
+- targets:
+    - 192.168.0.13:6761
+  labels:
+    project: bosspickseoul
+    service_group: cloud
+    env: dev
+    host: backend-1
+    service: service-discovery
+    container: bosspickseoul-service-discovery-dev
+    deployment: bosspickseoul-service-discovery-dev
+
+- targets:
+    - 192.168.0.13:6000
+  labels:
+    project: bosspickseoul
+    service_group: cloud
+    env: dev
+    host: backend-1
+    service: api-gateway
+    container: bosspickseoul-api-gateway-dev
+    deployment: bosspickseoul-api-gateway-dev

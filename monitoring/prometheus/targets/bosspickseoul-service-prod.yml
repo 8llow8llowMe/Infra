@@ -1,0 +1,65 @@
+- targets:
+    - 192.168.0.13:9081
+  labels:
+    project: bosspickseoul
+    service_group: service
+    env: prod
+    host: backend-1
+    service: auth-service
+    container: bosspickseoul-auth-service-prod
+    deployment: bosspickseoul-auth-service-prod
+
+- targets:
+    - 192.168.0.13:9082
+  labels:
+    project: bosspickseoul
+    service_group: service
+    env: prod
+    host: backend-1
+    service: district-service
+    container: bosspickseoul-district-service-prod
+    deployment: bosspickseoul-district-service-prod
+
+- targets:
+    - 192.168.0.13:9083
+  labels:
+    project: bosspickseoul
+    service_group: service
+    env: prod
+    host: backend-1
+    service: commercial-service
+    container: bosspickseoul-commercial-service-prod
+    deployment: bosspickseoul-commercial-service-prod
+
+- targets:
+    - 192.168.0.13:9085
+  labels:
+    project: bosspickseoul
+    service_group: service
+    env: prod
+    host: backend-1
+    service: ai-service
+    container: bosspickseoul-ai-service-prod
+    deployment: bosspickseoul-ai-service-prod
+
+- targets:
+    - 192.168.0.13:9086
+  labels:
+    project: bosspickseoul
+    service_group: service
+    env: prod
+    host: backend-1
+    service: community-service
+    container: bosspickseoul-community-service-prod
+    deployment: bosspickseoul-community-service-prod
+
+- targets:
+    - 192.168.0.13:9080
+  labels:
+    project: bosspickseoul
+    service_group: service
+    env: prod
+    host: backend-1
+    service: batch-service
+    container: bosspickseoul-batch-service-prod
+    deployment: bosspickseoul-batch-service-prod

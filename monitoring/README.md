@@ -214,7 +214,7 @@ sh install-node-exporter.sh
 - targets:
     - 192.168.0.13:9100
   labels:
-    instance: backend-1
+    host: backend-1
     role: backend
     project: bosspickseoul
 ```
@@ -271,7 +271,16 @@ sh install-promtail.sh
 
 백엔드 서비스는 Spring Actuator의 `/actuator/prometheus` 엔드포인트를 Prometheus가 scrape합니다.
 
-현재 `prometheus/targets/bosspickseoul-backend-dev.yml`에는 backend-1 IP를 `192.168.0.13`으로 가정해 dev 컨테이너 포트를 등록했습니다. DB 서버 `192.168.0.11`은 backend actuator 대상이 아니라 별도 node_exporter / promtail 대상입니다. 새 환경을 추가할 때는 `prometheus.yml`을 직접 수정하기보다 `prometheus/targets/` 아래에 환경별 target 파일을 추가하는 방식을 권장합니다.
+backend-1의 IP는 `192.168.0.13`이며 cloud/service와 dev/prod를 각각 별도 target 파일로 관리합니다. 파일명은 `<project>-<service_group>-<env>.yml` 형식입니다. DB 서버 `192.168.0.11`은 backend actuator 대상이 아니라 별도 node_exporter / promtail 대상입니다.
+
+| target 파일 | Prometheus job | 환경 |
+| --- | --- | --- |
+| `bosspickseoul-cloud-dev.yml` | `bosspickseoul-cloud` | dev |
+| `bosspickseoul-cloud-prod.yml` | `bosspickseoul-cloud` | prod |
+| `bosspickseoul-service-dev.yml` | `bosspickseoul-service` | dev |
+| `bosspickseoul-service-prod.yml` | `bosspickseoul-service` | prod |
+
+`instance`는 Prometheus 기본값인 `IP:port`를 유지합니다. Spring Cloud가 `spring.application.name`을 서비스 탐색 ID로 사용하므로 Docker 실행 단위는 `application`이 아니라 `container`과 `deployment`로 조회합니다.
 
 | 서비스 | scrape target |
 | --- | --- |
@@ -282,16 +291,23 @@ sh install-promtail.sh
 | commercial-service | `192.168.0.13:6083/actuator/prometheus` |
 | ai-service | `192.168.0.13:6085/actuator/prometheus` |
 | community-service | `192.168.0.13:6086/actuator/prometheus` |
+| batch-service | `192.168.0.13:6080/actuator/prometheus` |
 
-## Grafana 대시보드 추천
+prod는 동일 호스트의 `9xxx` 포트를 사용합니다. 실행하지 않는 서비스는 Prometheus와 Grafana에서 `DOWN`으로 표시됩니다.
+
+## Grafana 대시보드 프로비저닝
+
+`grafana/dashboards/BossPickSeoul`의 JSON은 Grafana의 BossPickSeoul 폴더로 자동 프로비저닝됩니다.
 
 | 대시보드 | 데이터소스 | 핵심 패널 |
 | --- | --- | --- |
-| BossPickSeoul Infra Overview | Prometheus | CPU, RAM, disk, network, node 상태 |
-| Backend Service Metrics | Prometheus | 서비스별 up/down, JVM heap, GC, HTTP latency, error rate |
-| API Gateway Overview | Prometheus | route별 요청량, 4xx/5xx, latency |
-| AI Service Jobs | Prometheus | job 상태, timeout, worker queue, token usage |
-| Service Logs | Loki | 서비스별 ERROR/WARN, 배포 직후 로그, 재시작 로그 |
+| Backend Overview | Prometheus | 서비스 UP/DOWN, 처리량, p95, heap, 5xx |
+| Backend Logs | Loki | 로그 수집량, WARN/ERROR, 실시간 로그 |
+| JPA Repository | Prometheus | Repository 호출률, 평균 응답시간, 오류 |
+| HTTP Performance | Prometheus | URI 처리량, p50/p95/p99, 상태 코드 |
+| JVM | Prometheus | heap, CPU, thread, GC pause |
+
+다른 프로젝트는 `grafana/dashboard-templates/spring-docker`의 JSON을 복사해 `__PROJECT__`, title, uid를 변경합니다. 프로비저닝된 대시보드는 Grafana UI가 아니라 Git의 JSON을 원본으로 관리합니다.
 
 ## 운영 기준
 
