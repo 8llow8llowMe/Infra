@@ -305,9 +305,23 @@ prod는 동일 호스트의 `9xxx` 포트를 사용합니다. 실행하지 않�
 | Backend Logs | Loki | 로그 수집량, WARN/ERROR, 실시간 로그 |
 | JPA Repository | Prometheus | Repository 호출률, 평균 응답시간, 오류 |
 | HTTP Performance | Prometheus | URI 처리량, p50/p95/p99, 상태 코드 |
-| JVM | Prometheus | heap, CPU, thread, GC pause |
+| JVM / 런타임 | Prometheus | heap·non-heap, 시스템/프로세스 CPU, load, thread, GC, HikariCP |
+| Executor / Thread Pool | Prometheus | active/queued, pool core·current·max, 완료 처리율, 실행시간 |
 
 다른 프로젝트는 `grafana/dashboard-templates/spring-docker`의 JSON을 복사해 `__PROJECT__`, title, uid를 변경합니다. 프로비저닝된 대시보드는 Grafana UI가 아니라 Git의 JSON을 원본으로 관리합니다.
+
+Grafana는 `grafana/grafana:12.x`를 사용하며, 대시보드는 classic 스키마(schemaVersion 40) + 접이식 row 구조입니다. datasource는 고정 uid `prometheus`, `loki`로 참조합니다. 대시보드 구조와 Grafana 12 전환 세부 사항은 `grafana/README.md`를 참고합니다.
+
+### 실행 중인데 로그 대시보드에 보이지 않는 경우
+
+Prometheus와 Loki는 서로 다른 사실을 보여줍니다.
+
+- Prometheus `up=1`: Actuator scrape가 성공해 서비스 프로세스를 관측할 수 있음
+- Loki 로그 존재: 선택한 시간 범위에 컨테이너가 stdout/stderr 로그를 실제로 출력함
+
+service-discovery는 Eureka 유지보수 로그를 주기적으로 출력하므로 요청이 없어도 계속 보입니다. 반면 일반 API 서비스는 최근 요청이나 이벤트가 없으면 로그가 없을 수 있습니다. `JVM 상세`에서 서비스가 보이는데 `백엔드 로그`에만 없다면 `grafana/README.md`의 backend-1 로그 진단 절차로 최근 로그 수, Docker 라벨, Promtail 오류 순서로 확인합니다.
+
+로그 대시보드의 서비스 선택 목록은 Loki가 아니라 Prometheus `up` 라벨에서 가져옵니다. 따라서 최근 로그가 없는 서비스도 선택할 수 있고, 상단 상태 패널에서 실행 상태와 로그 유입 여부를 구분할 수 있습니다.
 
 ## 운영 기준
 

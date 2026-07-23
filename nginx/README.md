@@ -354,26 +354,28 @@ docker logs -f nginx
 
 ---
 
-## BossPickSeoul domain map
+## BossPickSeoul 도메인 맵
 
-- `https://www.bosspickseoul.com` -> production web (`web-ssr:3000`)
-- `https://api.bosspickseoul.com` -> production API gateway (`192.168.0.13:9000`)
-- `https://api-dev.bosspickseoul.com` -> development API gateway (`192.168.0.13:6000`)
+- `https://www.bosspickseoul.com` -> 운영 웹 (`web-ssr:3000`)
+- `https://api.bosspickseoul.com` -> 운영 API 게이트웨이 (`192.168.0.13:9000`)
+- `https://api-dev.bosspickseoul.com` -> 개발 API 게이트웨이 (`192.168.0.13:6000`)
 
-### DNS checklist
+`api` / `api-dev` 도메인은 tripmarble과 동일한 구조로, auth-service 단독 호출과 api-gateway 경유 호출을 분리하고, Swagger는 api-gateway가 auth 포함 서비스 문서를 집계해 제공합니다. 자세한 라우팅은 `conf.d/api.bosspickseoul.conf`, `conf.d/api-dev.bosspickseoul.conf`를 참고합니다.
 
-- `bosspickseoul.com` A/AAAA -> public Nginx host
-- `www.bosspickseoul.com` A/AAAA or CNAME -> public Nginx host
-- `api.bosspickseoul.com` A/AAAA or CNAME -> public Nginx host
-- `api-dev.bosspickseoul.com` A/AAAA or CNAME -> public Nginx host
+### DNS 체크리스트
 
-### Certbot checklist
+- `bosspickseoul.com` A/AAAA -> 공개 Nginx 호스트
+- `www.bosspickseoul.com` A/AAAA 또는 CNAME -> 공개 Nginx 호스트
+- `api.bosspickseoul.com` A/AAAA 또는 CNAME -> 공개 Nginx 호스트
+- `api-dev.bosspickseoul.com` A/AAAA 또는 CNAME -> 공개 Nginx 호스트
 
-- `bosspickseoul.com` certificate covers `bosspickseoul.com` and `www.bosspickseoul.com`
-- `api.bosspickseoul.com` needs its own certificate
-- `api-dev.bosspickseoul.com` needs its own certificate
+### Certbot 체크리스트
 
-Example commands:
+- `bosspickseoul.com` 인증서는 `bosspickseoul.com`과 `www.bosspickseoul.com`을 포함합니다
+- `api.bosspickseoul.com`은 별도 인증서가 필요합니다
+- `api-dev.bosspickseoul.com`은 별도 인증서가 필요합니다
+
+예시 명령어:
 
 ```bash
 cd ~/infra/nginx
@@ -385,8 +387,8 @@ cd ~/infra/certbot
 ./init-cert-non-www.sh api-dev.bosspickseoul.com
 ```
 
-### Dev access log
+### 개발 access 로그
 
-- dedicated log file: `/var/log/nginx/bosspickseoul_dev_access.log`
-- follow it with `docker exec nginx tail -f /var/log/nginx/bosspickseoul_dev_access.log`
-- the dev API server also keeps writing to the global `/var/log/nginx/access.log`
+- 전용 로그 파일: `/var/log/nginx/bosspickseoul_dev_access.log`
+- `docker exec nginx tail -f /var/log/nginx/bosspickseoul_dev_access.log`로 확인합니다
+- 개발 API 서버도 전역 `/var/log/nginx/access.log`에 계속 기록합니다
