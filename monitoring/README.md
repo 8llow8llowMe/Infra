@@ -271,7 +271,7 @@ sh install-promtail.sh
 
 백엔드 서비스는 Spring Actuator의 `/actuator/prometheus` 엔드포인트를 Prometheus가 scrape합니다.
 
-backend-1의 IP는 `192.168.0.13`이며 cloud/service와 dev/prod를 각각 별도 target 파일로 관리합니다. 파일명은 `<project>-<service_group>-<env>.yml` 형식입니다. DB 서버 `192.168.0.11`은 backend actuator 대상이 아니라 별도 node_exporter / promtail 대상입니다.
+백엔드 배포 호스트는 환경별로 분리되어 있습니다. dev는 main-server(`192.168.0.11`, hostname `raspberrypi`, MySQL/Redis master 동거), prod는 backend-1(`192.168.0.13`)입니다. cloud/service와 dev/prod를 각각 별도 target 파일로 관리하며 파일명은 `<project>-<service_group>-<env>.yml` 형식입니다.
 
 | target 파일 | Prometheus job | 환경 |
 | --- | --- | --- |
@@ -282,18 +282,18 @@ backend-1의 IP는 `192.168.0.13`이며 cloud/service와 dev/prod를 각각 별�
 
 `instance`는 Prometheus 기본값인 `IP:port`를 유지합니다. Spring Cloud가 `spring.application.name`을 서비스 탐색 ID로 사용하므로 Docker 실행 단위는 `application`이 아니라 `container`과 `deployment`로 조회합니다.
 
-| 서비스 | scrape target |
+| 서비스 | dev scrape target (main-server) |
 | --- | --- |
-| service-discovery | `192.168.0.13:6761/actuator/prometheus` |
-| api-gateway | `192.168.0.13:6000/actuator/prometheus` |
-| auth-service | `192.168.0.13:6081/actuator/prometheus` |
-| district-service | `192.168.0.13:6082/actuator/prometheus` |
-| commercial-service | `192.168.0.13:6083/actuator/prometheus` |
-| ai-service | `192.168.0.13:6085/actuator/prometheus` |
-| community-service | `192.168.0.13:6086/actuator/prometheus` |
-| batch-service | `192.168.0.13:6080/actuator/prometheus` |
+| service-discovery | `192.168.0.11:6761/actuator/prometheus` |
+| api-gateway | `192.168.0.11:6000/actuator/prometheus` |
+| auth-service | `192.168.0.11:6081/actuator/prometheus` |
+| district-service | `192.168.0.11:6082/actuator/prometheus` |
+| commercial-service | `192.168.0.11:6083/actuator/prometheus` |
+| ai-service | `192.168.0.11:6085/actuator/prometheus` |
+| community-service | `192.168.0.11:6086/actuator/prometheus` |
+| batch-service | `192.168.0.11:6080/actuator/prometheus` |
 
-prod는 동일 호스트의 `9xxx` 포트를 사용합니다. 실행하지 않는 서비스는 Prometheus와 Grafana에서 `DOWN`으로 표시됩니다.
+prod는 backend-1(`192.168.0.13`)의 `9xxx` 포트를 사용합니다. 실행하지 않는 서비스는 Prometheus와 Grafana에서 `DOWN`으로 표시됩니다.
 
 ## Grafana 대시보드 프로비저닝
 
@@ -349,7 +349,7 @@ curl http://localhost:9100/metrics
 Spring Actuator:
 
 ```bash
-curl http://192.168.0.13:6081/actuator/prometheus
+curl http://192.168.0.11:6081/actuator/prometheus
 ```
 
 Loki:

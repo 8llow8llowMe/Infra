@@ -160,8 +160,8 @@ docker compose --env-file .env -f docker-compose-jenkins-deploy-agent.yml up -d 
 | --- | --- | --- | --- |
 | `jenkins-builder-agent` | `192.168.0.10` | `builder builder-backend` | Gradle build/test |
 | `frontend-builder-agent` | 빌드 서버 또는 Jenkins 서버 | `builder-frontend` | Next.js install/build |
-| `backend-dev-agent` | deploy 서버 | `deploy-backend-dev` | 백엔드 dev compose 배포 |
-| `backend-prod-agent` | deploy 서버 | `deploy-backend-prod` | 백엔드 prod compose 배포 |
+| `backend-dev-agent` | main-server (`192.168.0.11`) | `deploy-backend-dev` | 백엔드 dev compose 배포 |
+| `backend-prod-agent` | backend-1 (`192.168.0.13`) | `deploy-backend-prod` | 백엔드 prod compose 배포 |
 | `frontend-dev-agent` | deploy 서버 | `deploy-frontend-dev` | Next.js dev/prod app 배포 |
 | `frontend-prod-agent` | deploy 서버 | `deploy-frontend-prod` | 프론트 운영 배포 |
 

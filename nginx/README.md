@@ -357,8 +357,8 @@ docker logs -f nginx
 ## BossPickSeoul 도메인 맵
 
 - `https://www.bosspickseoul.com` -> 운영 웹 (`web-ssr:3000`)
-- `https://api.bosspickseoul.com` -> 운영 API 게이트웨이 (`192.168.0.13:9000`)
-- `https://api-dev.bosspickseoul.com` -> 개발 API 게이트웨이 (`192.168.0.13:6000`)
+- `https://api.bosspickseoul.com` -> 운영 API 게이트웨이 (backend-1 `192.168.0.13:9000`)
+- `https://api-dev.bosspickseoul.com` -> 개발 API 게이트웨이 (main-server `192.168.0.11:6000`)
 
 `api` / `api-dev` 도메인은 tripmarble과 동일한 구조로, auth-service 단독 호출과 api-gateway 경유 호출을 분리하고, Swagger는 api-gateway가 auth 포함 서비스 문서를 집계해 제공합니다. 자세한 라우팅은 `conf.d/api.bosspickseoul.conf`, `conf.d/api-dev.bosspickseoul.conf`를 참고합니다.
 

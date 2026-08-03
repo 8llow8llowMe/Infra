@@ -1,65 +1,65 @@
 - targets:
-    - 192.168.0.13:6081
+    - 192.168.0.11:6081
   labels:
     project: bosspickseoul
     service_group: service
     env: dev
-    host: backend-1
+    host: main-server
     service: auth-service
     container: bosspickseoul-auth-service-dev
     deployment: bosspickseoul-auth-service-dev
 
 - targets:
-    - 192.168.0.13:6082
+    - 192.168.0.11:6082
   labels:
     project: bosspickseoul
     service_group: service
     env: dev
-    host: backend-1
+    host: main-server
     service: district-service
     container: bosspickseoul-district-service-dev
     deployment: bosspickseoul-district-service-dev
 
 - targets:
-    - 192.168.0.13:6083
+    - 192.168.0.11:6083
   labels:
     project: bosspickseoul
     service_group: service
     env: dev
-    host: backend-1
+    host: main-server
     service: commercial-service
     container: bosspickseoul-commercial-service-dev
     deployment: bosspickseoul-commercial-service-dev
 
 - targets:
-    - 192.168.0.13:6085
+    - 192.168.0.11:6085
   labels:
     project: bosspickseoul
     service_group: service
     env: dev
-    host: backend-1
+    host: main-server
     service: ai-service
     container: bosspickseoul-ai-service-dev
     deployment: bosspickseoul-ai-service-dev
 
 - targets:
-    - 192.168.0.13:6086
+    - 192.168.0.11:6086
   labels:
     project: bosspickseoul
     service_group: service
     env: dev
-    host: backend-1
+    host: main-server
     service: community-service
     container: bosspickseoul-community-service-dev
     deployment: bosspickseoul-community-service-dev
 
 - targets:
-    - 192.168.0.13:6080
+    - 192.168.0.11:6080
   labels:
     project: bosspickseoul
     service_group: service
     env: dev
-    host: backend-1
+    host: main-server
     service: batch-service
     container: bosspickseoul-batch-service-dev
     deployment: bosspickseoul-batch-service-dev

@@ -10,3 +10,11 @@
     project: bosspickseoul
   targets:
     - 192.168.0.13:9100
+# main-server(hostname raspberrypi): MySQL/Redis master + bosspickseoul dev 백엔드.
+# node_exporter를 이 서버에 설치한 뒤부터 수집된다 (monitoring/node-exporter 참고).
+- labels:
+    host: main-server
+    role: backend
+    project: bosspickseoul
+  targets:
+    - 192.168.0.11:9100
