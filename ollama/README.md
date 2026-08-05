@@ -47,6 +47,8 @@ Compose 파일에는 기본값을 넣지 않습니다. 실행 전에 `.env`를 �
 | `OLLAMA_KEEP_ALIVE` | 모델 메모리 유지 시간 | `24h` |
 | `OLLAMA_NUM_PARALLEL` | 동시 추론 수 | `1` |
 | `OLLAMA_VULKAN` | Vulkan 백엔드 활성화 | `1` |
+| `OLLAMA_FLASH_ATTENTION` | flash attention 활성화 (KV 캐시 양자화 전제 조건) | `1` |
+| `OLLAMA_KV_CACHE_TYPE` | KV 캐시 양자화 타입 (`q8_0`이면 메모리 절반) | `q8_0` |
 | `OLLAMA_DATA_DIR` | 호스트 모델 데이터 경로 | `./ollama-data` |
 | `OLLAMA_CONTAINER_DATA_DIR` | 컨테이너 모델 데이터 경로 | `/root/.ollama` |
 | `OPEN_WEBUI_IMAGE` | Open WebUI 이미지 | `ghcr.io/open-webui/open-webui:main` |

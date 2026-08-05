@@ -16,6 +16,11 @@ services:
       OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE}
       OLLAMA_NUM_PARALLEL: ${OLLAMA_NUM_PARALLEL}
       OLLAMA_VULKAN: ${OLLAMA_VULKAN}
+      # flash attention + KV 캐시 8bit 양자화: KV 캐시 메모리를 절반으로 줄여
+      # 긴 프롬프트(AI 리포트 원천 데이터) 처리 시 대역폭 부담을 낮춘다.
+      # 서버 .env에 키가 없어도 기본값이 적용되도록 :- 폴백을 둔다.
+      OLLAMA_FLASH_ATTENTION: ${OLLAMA_FLASH_ATTENTION:-1}
+      OLLAMA_KV_CACHE_TYPE: ${OLLAMA_KV_CACHE_TYPE:-q8_0}
       TZ: ${TZ}
     ports:
       - '${OLLAMA_PORT}:${OLLAMA_CONTAINER_PORT}'
