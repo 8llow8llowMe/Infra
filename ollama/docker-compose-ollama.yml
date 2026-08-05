@@ -16,6 +16,9 @@ services:
       OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE}
       OLLAMA_NUM_PARALLEL: ${OLLAMA_NUM_PARALLEL}
       OLLAMA_VULKAN: ${OLLAMA_VULKAN}
+      # Ollama 0.32+부터 내장 GPU(iGPU)는 기본 제외된다. 이 플래그가 없으면
+      # "dropping integrated GPU" 로그와 함께 CPU 추론으로 떨어진다.
+      OLLAMA_IGPU_ENABLE: ${OLLAMA_IGPU_ENABLE}
       # flash attention + KV 캐시 8bit 양자화: KV 캐시 메모리를 절반으로 줄여
       # 긴 프롬프트(AI 리포트 원천 데이터) 처리 시 대역폭 부담을 낮춘다.
       OLLAMA_FLASH_ATTENTION: ${OLLAMA_FLASH_ATTENTION}
