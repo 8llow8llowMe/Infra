@@ -230,7 +230,10 @@ curl -X POST http://localhost:9090/-/reload
 
 Docker 컨테이너 로그를 Loki로 보내고 싶은 서버에서 실행합니다.
 
+**Grafana(monitoring 서버)와 백엔드 서버가 분리되어 있어도 로그는 백엔드 서버에 Promtail을 띄워야 합니다.** Loki는 push 방식이라 원격 서버의 로그를 스스로 읽어올 수 없습니다. 반면 백엔드 앱 메트릭은 Prometheus가 pull로 가져가므로 agent가 필요 없습니다.
+
 ```bash
+# 백엔드 서버에서
 cd monitoring/promtail
 cp .env.agent.example .env.agent
 vi .env.agent
@@ -248,8 +251,19 @@ PROMTAIL_PROJECT=bosspickseoul
 | 변수 | 설명 |
 | --- | --- |
 | `LOKI_PUSH_URL` | monitoring 서버의 Loki push API |
-| `PROMTAIL_HOSTNAME` | 로그가 발생한 서버명 |
+| `PROMTAIL_HOSTNAME` | 로그가 발생한 서버명. 서버마다 다른 값을 넣어야 Grafana에서 구분됩니다 |
 | `PROMTAIL_PROJECT` | Loki/Grafana에서 필터링할 프로젝트명 |
+
+선행 조건 2가지를 확인합니다.
+
+```bash
+# 1. 백엔드 서버에서 monitoring 서버 3100 도달 확인
+curl http://192.168.0.14:3100/ready
+```
+
+2. Loki push API에는 인증이 없으므로 **사설망 주소를 사용하고 공개망에 노출하지 않습니다.** 불가피하면 Nginx basic auth + HTTPS로 감쌉니다.
+
+Promtail은 Docker socket을 읽어 컨테이너를 자동 탐색하므로 서비스를 새로 띄워도 설정을 고칠 필요가 없습니다. 라벨 구성 규칙, LogQL 쿼리 예시, 로그가 보이지 않을 때의 진단 순서는 `promtail/README.md`에 정리했습니다.
 
 ## 애플리케이션 서버에서 node_exporter + Promtail 같이 실행
 
@@ -331,6 +345,8 @@ service-discovery는 Eureka 유지보수 로그를 주기적으로 출력하므�
 - Prometheus retention은 `15d`, `8GB`로 시작하되 라즈베리파이 메모리/디스크 상태를 보고 줄입니다.
 - Loki retention은 `72h`로 시작합니다.
 - Grafana와 Prometheus는 공개망에 직접 노출하지 말고 Nginx 인증, VPN, 내부망으로 보호합니다.
+- Loki push API(3100)에는 인증이 없습니다. agent와 Loki 사이는 사설망 통신으로 유지합니다.
+- Promtail은 2026-02-28로 지원이 종료되었습니다. 신규 서버는 Grafana Alloy 전환을 검토합니다. (`promtail/README.md` 참고)
 
 ## 빠른 점검
 
