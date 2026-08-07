@@ -1,56 +1,113 @@
 name: ${KAFKA_PROJECT_NAME:-kafka}
 
+# 3 노드 공통 환경변수. 노드별로 다른 값(NODE_ID, ADVERTISED_LISTENERS)만 각 서비스에서 덮어쓴다.
+x-kafka-common-environment: &kafka_common_environment
+  TZ: ${TZ}
+  KAFKA_ENABLE_KRAFT: "yes"
+  KAFKA_KRAFT_CLUSTER_ID: ${KAFKA_KRAFT_CLUSTER_ID}
+  KAFKA_CFG_PROCESS_ROLES: broker,controller
+  KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+  # 컨테이너 내부 포트는 고정: PLAINTEXT 9092 / CONTROLLER 9093 / EXTERNAL 19092
+  KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:19092
+  KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT
+  # KRaft controller quorum. 과반 합의(Raft)라 홀수 노드로 구성한다 (3노드 = 1대 장애 허용).
+  KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093
+  KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+  KAFKA_CFG_NUM_PARTITIONS: ${KAFKA_NUM_PARTITIONS}
+  KAFKA_CFG_DEFAULT_REPLICATION_FACTOR: ${KAFKA_DEFAULT_REPLICATION_FACTOR}
+  KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: ${KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR}
+  KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: ${KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR}
+  KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR: ${KAFKA_TRANSACTION_STATE_LOG_MIN_ISR}
+  KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: ${KAFKA_AUTO_CREATE_TOPICS_ENABLE}
+  KAFKA_CFG_DELETE_TOPIC_ENABLE: ${KAFKA_DELETE_TOPIC_ENABLE}
+  KAFKA_CFG_LOG_RETENTION_HOURS: ${KAFKA_LOG_RETENTION_HOURS}
+  KAFKA_CFG_LOG_SEGMENT_BYTES: ${KAFKA_LOG_SEGMENT_BYTES}
+  KAFKA_CFG_MESSAGE_MAX_BYTES: ${KAFKA_MESSAGE_MAX_BYTES}
+  KAFKA_HEAP_OPTS: ${KAFKA_HEAP_OPTS}
+  ALLOW_PLAINTEXT_LISTENER: "yes"
+
+x-kafka-healthcheck: &kafka_healthcheck
+  test:
+    - CMD-SHELL
+    - /opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1
+  interval: 20s
+  timeout: 10s
+  retries: 10
+  start_period: 40s
+
+# 컨테이너 메모리 상한. heap(KAFKA_HEAP_OPTS) 외에 page cache/오프힙 여유분을 포함한 값이다.
+x-kafka-deploy: &kafka_deploy
+  resources:
+    limits:
+      memory: ${KAFKA_MEM_LIMIT:-1g}
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
-  kafka:
+  kafka-1:
     image: ${KAFKA_IMAGE}
-    container_name: ${KAFKA_CONTAINER_NAME}
+    container_name: kafka-1
     restart: unless-stopped
     ports:
-      - "${KAFKA_EXTERNAL_PORT}:19092"
+      - "${KAFKA_1_EXTERNAL_PORT}:19092"
     environment:
-      TZ: ${TZ}
-      KAFKA_ENABLE_KRAFT: "yes"
-      KAFKA_KRAFT_CLUSTER_ID: ${KAFKA_KRAFT_CLUSTER_ID}
-      KAFKA_CFG_NODE_ID: ${KAFKA_NODE_ID}
-      KAFKA_CFG_PROCESS_ROLES: broker,controller
-      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:19092
-      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://${KAFKA_EXTERNAL_HOST}:${KAFKA_EXTERNAL_PORT}
-      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT
-      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: ${KAFKA_NODE_ID}@kafka:${KAFKA_CONTROLLER_PORT}
-      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_CFG_NUM_PARTITIONS: ${KAFKA_NUM_PARTITIONS}
-      KAFKA_CFG_DEFAULT_REPLICATION_FACTOR: ${KAFKA_DEFAULT_REPLICATION_FACTOR}
-      KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: ${KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR}
-      KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: ${KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR}
-      KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR: ${KAFKA_TRANSACTION_STATE_LOG_MIN_ISR}
-      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: ${KAFKA_AUTO_CREATE_TOPICS_ENABLE}
-      KAFKA_CFG_DELETE_TOPIC_ENABLE: ${KAFKA_DELETE_TOPIC_ENABLE}
-      KAFKA_CFG_LOG_RETENTION_HOURS: ${KAFKA_LOG_RETENTION_HOURS}
-      KAFKA_CFG_LOG_SEGMENT_BYTES: ${KAFKA_LOG_SEGMENT_BYTES}
-      KAFKA_CFG_MESSAGE_MAX_BYTES: ${KAFKA_MESSAGE_MAX_BYTES}
-      KAFKA_HEAP_OPTS: ${KAFKA_HEAP_OPTS}
-      ALLOW_PLAINTEXT_LISTENER: "yes"
-    # 컨테이너 메모리 상한. heap(KAFKA_HEAP_OPTS) 외에 page cache/오프힙 여유분을 포함한 값이다.
+      <<: *kafka_common_environment
+      KAFKA_CFG_NODE_ID: "1"
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka-1:9092,EXTERNAL://${KAFKA_EXTERNAL_HOST}:${KAFKA_1_EXTERNAL_PORT}
     deploy:
-      resources:
-        limits:
-          memory: ${KAFKA_MEM_LIMIT:-1g}
+      <<: *kafka_deploy
     volumes:
-      - ${KAFKA_DATA_DIR}:${KAFKA_CONTAINER_DATA_DIR}
+      - ${KAFKA_1_DATA_DIR}:/bitnami/kafka
     healthcheck:
-      test:
-        - CMD-SHELL
-        - /opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1
-      interval: 20s
-      timeout: 10s
-      retries: 10
-      start_period: 40s
+      <<: *kafka_healthcheck
     logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+      <<: *default-logging
+    networks:
+      - 8llow8llowme-net
+
+  kafka-2:
+    image: ${KAFKA_IMAGE}
+    container_name: kafka-2
+    restart: unless-stopped
+    ports:
+      - "${KAFKA_2_EXTERNAL_PORT}:19092"
+    environment:
+      <<: *kafka_common_environment
+      KAFKA_CFG_NODE_ID: "2"
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka-2:9092,EXTERNAL://${KAFKA_EXTERNAL_HOST}:${KAFKA_2_EXTERNAL_PORT}
+    deploy:
+      <<: *kafka_deploy
+    volumes:
+      - ${KAFKA_2_DATA_DIR}:/bitnami/kafka
+    healthcheck:
+      <<: *kafka_healthcheck
+    logging:
+      <<: *default-logging
+    networks:
+      - 8llow8llowme-net
+
+  kafka-3:
+    image: ${KAFKA_IMAGE}
+    container_name: kafka-3
+    restart: unless-stopped
+    ports:
+      - "${KAFKA_3_EXTERNAL_PORT}:19092"
+    environment:
+      <<: *kafka_common_environment
+      KAFKA_CFG_NODE_ID: "3"
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka-3:9092,EXTERNAL://${KAFKA_EXTERNAL_HOST}:${KAFKA_3_EXTERNAL_PORT}
+    deploy:
+      <<: *kafka_deploy
+    volumes:
+      - ${KAFKA_3_DATA_DIR}:/bitnami/kafka
+    healthcheck:
+      <<: *kafka_healthcheck
+    logging:
+      <<: *default-logging
     networks:
       - 8llow8llowme-net
 
@@ -59,7 +116,11 @@ services:
     container_name: ${KAFKA_UI_CONTAINER_NAME}
     restart: unless-stopped
     depends_on:
-      kafka:
+      kafka-1:
+        condition: service_healthy
+      kafka-2:
+        condition: service_healthy
+      kafka-3:
         condition: service_healthy
     ports:
       - "${KAFKA_UI_PORT}:8080"
@@ -67,16 +128,13 @@ services:
       TZ: ${TZ}
       DYNAMIC_CONFIG_ENABLED: "false"
       KAFKA_CLUSTERS_0_NAME: bosspick-kafka
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka-1:9092,kafka-2:9092,kafka-3:9092
     deploy:
       resources:
         limits:
           memory: ${KAFKA_UI_MEM_LIMIT:-512m}
     logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+      <<: *default-logging
     networks:
       - 8llow8llowme-net
 
