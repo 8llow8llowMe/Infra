@@ -6,17 +6,17 @@
 
 ## 구성 요약
 
-- 브로커: `bitnami/kafka:3.9.0` × 3 (`kafka-1`, `kafka-2`, `kafka-3`)
+- 브로커: `apache/kafka:4.3.1` × 3 (`kafka-1`, `kafka-2`, `kafka-3`)
 - 모드: **KRaft combined** — 각 노드가 `broker,controller` 동시 역할
 - controller quorum: `1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093`
 - 복제: replication factor `3`, min ISR `2` (브로커 1대 장애까지 읽기/쓰기 지속)
-- UI: `ghcr.io/kafbat/kafka-ui:v1.2.0` (provectuslabs/kafka-ui 는 개발 중단 — 유지보수 포크로 교체)
+- UI: `ghcr.io/kafbat/kafka-ui:v1.5.0` (provectuslabs/kafka-ui 는 개발 중단 — 유지보수 포크로 교체)
 - 내부 접속 주소: `kafka-1:9092,kafka-2:9092,kafka-3:9092` (같은 호스트의 `8llow8llowme-net` 컨테이너 전용)
 - 외부 접속 주소: `${KAFKA_EXTERNAL_HOST}:19092/29092/39092` (다른 서버의 클라이언트용)
 - Docker 네트워크: `8llow8llowme-net`
 
 공통 환경변수는 compose 상단의 `x-kafka-common-environment` 앵커 한 곳에서 관리하고,
-노드별로 다른 값(`KAFKA_CFG_NODE_ID`, `KAFKA_CFG_ADVERTISED_LISTENERS`)만 각 서비스에서 덮어씁니다.
+노드별로 다른 값(`KAFKA_NODE_ID`, `KAFKA_ADVERTISED_LISTENERS`)만 각 서비스에서 덮어씁니다.
 healthcheck / 메모리 상한 / logging 도 같은 방식의 앵커(`x-kafka-healthcheck`, `x-kafka-deploy`, `x-logging`)를 공유합니다.
 
 ### 왜 홀수 노드인가
@@ -38,12 +38,61 @@ KRaft 의 controller quorum 은 Raft 합의라 **과반(majority) 투표**로 �
 
 호스트 수준 HA 가 필요해지면 브로커를 서버 3대로 분리하는 것이 다음 단계입니다.
 
-### 이미지 유지보수 주의
+## 공식 이미지 이전 (bitnami → apache/kafka)
 
-- `bitnami/kafka` 공개 카탈로그는 2025년부터 갱신이 동결됐습니다. 고정 태그(3.9.0)는 계속
-  동작하지만 보안 패치가 없으므로, 장기적으로는 공식 `apache/kafka` 이미지로의 이전을 권장합니다.
-  (환경변수 접두어가 `KAFKA_CFG_*` → `KAFKA_*` 로 바뀌고 경로가 `/opt/kafka` 로 달라져
-  compose 재작성이 필요 — 별도 작업으로 진행)
+`bitnami/kafka` 공개 카탈로그는 2025년부터 갱신이 동결되어 보안 패치가 나오지 않습니다. 그래서 공식 `apache/kafka` 이미지로 이전했습니다. 이전 `.env` 를 그대로 쓰면 기동에 실패하므로 아래 차이를 확인해야 합니다.
+
+### 무엇이 달라졌나
+
+| 항목 | bitnami (이전) | apache/kafka (현재) |
+| --- | --- | --- |
+| 이미지 | `bitnami/kafka:3.9.0` | `apache/kafka:4.3.1` |
+| 설정 환경변수 접두어 | `KAFKA_CFG_*` | `KAFKA_*` |
+| 클러스터 ID 변수 | `KAFKA_KRAFT_CLUSTER_ID` | `CLUSTER_ID` (`.env` 는 `KAFKA_CLUSTER_ID`) |
+| KRaft 활성화 플래그 | `KAFKA_ENABLE_KRAFT=yes` | 없음 (4.x 는 KRaft 전용) |
+| PLAINTEXT 허용 플래그 | `ALLOW_PLAINTEXT_LISTENER=yes` | 없음 (bitnami 전용이었음) |
+| 바이너리 경로 | `/opt/bitnami/kafka/bin` | `/opt/kafka/bin` |
+| 데이터 경로 | `/bitnami/kafka` | `/var/lib/kafka/data` (`KAFKA_LOG_DIRS` 로 명시) |
+| 실행 사용자 | root 계열 | UID/GID **1000** (`appuser`) |
+
+환경변수 이름 규칙은 `server.properties` 키를 그대로 변환합니다. 점(`.`)은 밑줄, 밑줄은 밑줄 2개, 하이픈은 밑줄 3개로 바꾸고 `KAFKA_` 를 붙입니다. 예를 들어 `num.partitions` 는 `KAFKA_NUM_PARTITIONS` 입니다.
+
+### 이전 시 반드시 확인할 2가지
+
+**1. 데이터는 이어지지 않습니다.** 데이터 경로가 `/bitnami/kafka` → `/var/lib/kafka/data` 로 바뀌었고 내부 레이아웃도 다릅니다. 기존 클러스터의 토픽 데이터를 유지해야 한다면 이전이 아니라 새 클러스터 구축 + 재적재로 접근해야 합니다. 아직 운영 데이터가 없다면 데이터 디렉터리를 비우고 새로 올리는 것이 가장 간단합니다.
+
+```bash
+docker compose --env-file .env -f docker-compose-kafka.yml down
+rm -rf kafka-1-data kafka-2-data kafka-3-data
+sh install-kafka.sh
+```
+
+**2. 데이터 디렉터리 소유자가 1000:1000 이어야 합니다.** 공식 이미지는 비루트(`appuser`, UID 1000)로 실행되므로 root 소유 디렉터리에는 로그를 쓸 수 없어 기동 직후 죽습니다. `install-kafka.sh` 가 자동으로 `chown` 을 시도하고, 권한이 없으면 안내를 출력합니다.
+
+```bash
+sudo chown -R 1000:1000 kafka-1-data kafka-2-data kafka-3-data
+```
+
+### 함께 개선한 설정
+
+- `min.insync.replicas=2` 를 명시했습니다(`KAFKA_MIN_INSYNC_REPLICAS`). 기존 구성은 트랜잭션 로그의 min ISR 만 지정하고 일반 토픽은 지정하지 않아, Kafka 기본값 `1` 이 적용되고 있었습니다. 그러면 RF=3 이어도 복제본 1개만 살아 있을 때 `acks=all` 쓰기가 성공해 그 노드가 죽으면 유실됩니다.
+- `KAFKA_LOG_DIRS` 를 명시했습니다. 공식 이미지 기본값은 `/tmp` 아래라 명시하지 않으면 컨테이너 재생성 시 데이터가 사라집니다.
+- Kafka UI 를 `v1.5.0` 으로 올렸습니다.
+
+### 왜 controller quorum 은 아직 정적(static)인가
+
+Kafka 4.1 부터 KRaft version 1 이 `controller.quorum.voters`(정적)를 **deprecated** 로 표시하고 `controller.quorum.bootstrap.servers`(동적, KIP-853)를 권장합니다. 동적 quorum 은 컨트롤러를 재시작 없이 추가/제거할 수 있는 장점이 있습니다.
+
+그런데 동적 quorum 으로 클러스터를 만들려면 스토리지 포맷 시 `--initial-controllers "id@host:port:directoryUuid,..."` 또는 `--standalone` 을 넘겨야 합니다. **공식 이미지의 자동 포맷은 `--cluster-id` 와 `--ignore-formatted` 만 사용해 이 옵션을 지원하지 않습니다.** `docker compose up` 한 번으로 기동되는 지금 구조를 유지하려면 정적 voters 가 맞습니다.
+
+정적 voters 는 deprecated 이지만 여전히 동작하며, 3노드 고정 구성에서는 실질적 손해가 없습니다. 브로커를 서버 3대로 분리하거나 컨트롤러를 무중단으로 늘려야 할 때 아래 순서로 전환합니다.
+
+1. 컨트롤러 1대를 `kafka-storage.sh format --standalone` 으로 포맷해 단독 기동
+2. 나머지 컨트롤러는 `--no-initial-controllers` 로 포맷 후 기동
+3. `kafka-metadata-quorum.sh add-controller` 로 quorum 에 편입
+4. 전체 노드 설정을 `controller.quorum.bootstrap.servers` 로 교체
+
+이 절차는 compose 자동 기동으로는 표현할 수 없어, 초기화 스크립트를 분리하는 별도 작업이 필요합니다.
 
 ## 파일 구조
 
@@ -71,8 +120,8 @@ cp .env.example .env
 
 | 변수 | 설명 | 예시 |
 | --- | --- | --- |
-| `KAFKA_IMAGE` | Kafka 이미지 | `bitnami/kafka:3.9.0` |
-| `KAFKA_KRAFT_CLUSTER_ID` | KRaft 클러스터 ID (3노드 공통) | `MkU3OEVBNTcwNTJENDM2Qk` |
+| `KAFKA_IMAGE` | Kafka 이미지 | `apache/kafka:4.3.1` |
+| `KAFKA_CLUSTER_ID` | KRaft 클러스터 ID (3노드 공통) | `MkU3OEVBNTcwNTJENDM2Qk` |
 | `KAFKA_1/2/3_EXTERNAL_PORT` | 노드별 외부 advertised listener 포트 | `19092` / `29092` / `39092` |
 | `KAFKA_EXTERNAL_HOST` | 외부 클라이언트가 바라볼 호스트 IP 또는 DNS | `192.168.0.10` |
 | `KAFKA_1/2/3_DATA_DIR` | 노드별 호스트 데이터 경로 | `./kafka-1-data` 등 |
@@ -83,7 +132,7 @@ cp .env.example .env
 | `KAFKA_DEFAULT_REPLICATION_FACTOR` | 기본 복제 계수 (3노드 기준 3) | `3` |
 | `KAFKA_TRANSACTION_STATE_LOG_MIN_ISR` | 최소 ISR (3노드 기준 2) | `2` |
 | `KAFKA_AUTO_CREATE_TOPICS_ENABLE` | 토픽 자동 생성 허용 여부 | `false` |
-| `KAFKA_UI_IMAGE` | Kafka UI 이미지 | `ghcr.io/kafbat/kafka-ui:v1.2.0` |
+| `KAFKA_UI_IMAGE` | Kafka UI 이미지 | `ghcr.io/kafbat/kafka-ui:v1.5.0` |
 | `KAFKA_UI_PORT` | Kafka UI 외부 포트 | `18080` |
 | `TZ` | 타임존 | `Asia/Seoul` |
 
@@ -147,7 +196,7 @@ docker logs -f kafka-ui
 quorum 상태 확인 (리더/보터 확인):
 
 ```bash
-docker exec -it kafka-1 /opt/bitnami/kafka/bin/kafka-metadata-quorum.sh \
+docker exec -it kafka-1 /opt/kafka/bin/kafka-metadata-quorum.sh \
   --bootstrap-server localhost:9092 describe --status
 ```
 
@@ -200,7 +249,7 @@ bootstrap 은 클러스터 발견용 진입점이라 하나만 적어도 동작�
 생성 예시 (3노드 기준 replication factor 3):
 
 ```bash
-docker exec -it kafka-1 /opt/bitnami/kafka/bin/kafka-topics.sh \
+docker exec -it kafka-1 /opt/kafka/bin/kafka-topics.sh \
   --create \
   --topic bosspick.analysis-events \
   --partitions 3 \
@@ -211,10 +260,10 @@ docker exec -it kafka-1 /opt/bitnami/kafka/bin/kafka-topics.sh \
 목록/상세 확인:
 
 ```bash
-docker exec -it kafka-1 /opt/bitnami/kafka/bin/kafka-topics.sh \
+docker exec -it kafka-1 /opt/kafka/bin/kafka-topics.sh \
   --list --bootstrap-server localhost:9092
 
-docker exec -it kafka-1 /opt/bitnami/kafka/bin/kafka-topics.sh \
+docker exec -it kafka-1 /opt/kafka/bin/kafka-topics.sh \
   --describe --topic bosspick.analysis-events --bootstrap-server localhost:9092
 ```
 
@@ -271,7 +320,7 @@ docker logs -f kafka-1
 
 - `kafka-1/2/3` 컨테이너가 healthy 인지
 - `8llow8llowme-net` 네트워크가 존재하는지
-- `KAFKA_CFG_ADVERTISED_LISTENERS` 의 외부 호스트 값이 잘못되지 않았는지
+- `KAFKA_ADVERTISED_LISTENERS` 의 외부 호스트 값이 잘못되지 않았는지
 
 네트워크 확인:
 

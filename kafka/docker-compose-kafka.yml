@@ -1,35 +1,53 @@
 name: ${KAFKA_PROJECT_NAME:-kafka}
 
 # 3 노드 공통 환경변수. 노드별로 다른 값(NODE_ID, ADVERTISED_LISTENERS)만 각 서비스에서 덮어쓴다.
+#
+# 공식 apache/kafka 이미지는 server.properties 키를 KAFKA_ 접두어 환경변수로 받는다.
+#   변환 규칙: 점(.) -> 밑줄(_), 밑줄(_) -> 밑줄 2개(__), 하이픈(-) -> 밑줄 3개(___)
+#   예) num.partitions -> KAFKA_NUM_PARTITIONS
+# bitnami 이미지의 KAFKA_CFG_* 접두어와 다르므로, 이미지를 바꿀 때 전부 함께 바꿔야 한다.
+# bitnami 전용이던 KAFKA_ENABLE_KRAFT / ALLOW_PLAINTEXT_LISTENER 는 공식 이미지에 없어 제거했다.
+# (Kafka 4.x 는 KRaft 전용이라 KRaft 활성화 플래그 자체가 필요 없다)
 x-kafka-common-environment: &kafka_common_environment
   TZ: ${TZ}
-  KAFKA_ENABLE_KRAFT: "yes"
-  KAFKA_KRAFT_CLUSTER_ID: ${KAFKA_KRAFT_CLUSTER_ID}
-  KAFKA_CFG_PROCESS_ROLES: broker,controller
-  KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+  # KRaft 클러스터 식별자. 3노드가 반드시 같은 값을 써야 한다. (bitnami 의 KAFKA_KRAFT_CLUSTER_ID 대체)
+  # 이미지가 최초 기동 시 이 값으로 스토리지를 포맷한다. --ignore-formatted 를 쓰므로 재기동은 안전하다.
+  CLUSTER_ID: ${KAFKA_CLUSTER_ID}
+  KAFKA_PROCESS_ROLES: broker,controller
+  KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
   # 컨테이너 내부 포트는 고정: PLAINTEXT 9092 / CONTROLLER 9093 / EXTERNAL 19092
-  KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:19092
-  KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT
+  KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:19092
+  KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT
+  KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
   # KRaft controller quorum. 과반 합의(Raft)라 홀수 노드로 구성한다 (3노드 = 1대 장애 허용).
-  KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093
-  KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-  KAFKA_CFG_NUM_PARTITIONS: ${KAFKA_NUM_PARTITIONS}
-  KAFKA_CFG_DEFAULT_REPLICATION_FACTOR: ${KAFKA_DEFAULT_REPLICATION_FACTOR}
-  KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: ${KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR}
-  KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: ${KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR}
-  KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR: ${KAFKA_TRANSACTION_STATE_LOG_MIN_ISR}
-  KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: ${KAFKA_AUTO_CREATE_TOPICS_ENABLE}
-  KAFKA_CFG_DELETE_TOPIC_ENABLE: ${KAFKA_DELETE_TOPIC_ENABLE}
-  KAFKA_CFG_LOG_RETENTION_HOURS: ${KAFKA_LOG_RETENTION_HOURS}
-  KAFKA_CFG_LOG_SEGMENT_BYTES: ${KAFKA_LOG_SEGMENT_BYTES}
-  KAFKA_CFG_MESSAGE_MAX_BYTES: ${KAFKA_MESSAGE_MAX_BYTES}
+  #
+  # 정적(static) voters 는 KRaft version 1(Kafka 4.1+)에서 deprecated 이지만 계속 동작한다.
+  # 권장 방식인 동적 quorum(controller.quorum.bootstrap.servers)은 스토리지 포맷 시
+  # --initial-controllers 를 넘겨야 하는데, 공식 이미지의 자동 포맷은 --cluster-id 만 사용해
+  # 이 옵션을 지원하지 않는다. 그래서 compose 로 관리하는 이 구성은 정적 voters 를 유지한다.
+  # (전환 절차는 README "동적 quorum 전환" 참고)
+  KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093
+  # 로그 저장 경로. 공식 이미지 기본값은 /tmp 아래라 반드시 명시하고 볼륨을 붙여야 데이터가 남는다.
+  KAFKA_LOG_DIRS: /var/lib/kafka/data
+  KAFKA_NUM_PARTITIONS: ${KAFKA_NUM_PARTITIONS}
+  KAFKA_DEFAULT_REPLICATION_FACTOR: ${KAFKA_DEFAULT_REPLICATION_FACTOR}
+  # acks=all 쓰기를 몇 개의 복제본에 반영해야 성공으로 볼지. 기본값 1 이면 RF=3 이어도
+  # 복제본 1개만 살아 있을 때 쓰기가 성공해 장애 시 유실될 수 있다. RF=3 이면 2 를 쓴다.
+  KAFKA_MIN_INSYNC_REPLICAS: ${KAFKA_MIN_INSYNC_REPLICAS}
+  KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: ${KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR}
+  KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: ${KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR}
+  KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: ${KAFKA_TRANSACTION_STATE_LOG_MIN_ISR}
+  KAFKA_AUTO_CREATE_TOPICS_ENABLE: ${KAFKA_AUTO_CREATE_TOPICS_ENABLE}
+  KAFKA_DELETE_TOPIC_ENABLE: ${KAFKA_DELETE_TOPIC_ENABLE}
+  KAFKA_LOG_RETENTION_HOURS: ${KAFKA_LOG_RETENTION_HOURS}
+  KAFKA_LOG_SEGMENT_BYTES: ${KAFKA_LOG_SEGMENT_BYTES}
+  KAFKA_MESSAGE_MAX_BYTES: ${KAFKA_MESSAGE_MAX_BYTES}
   KAFKA_HEAP_OPTS: ${KAFKA_HEAP_OPTS}
-  ALLOW_PLAINTEXT_LISTENER: "yes"
 
 x-kafka-healthcheck: &kafka_healthcheck
   test:
     - CMD-SHELL
-    - /opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1
+    - /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1
   interval: 20s
   timeout: 10s
   retries: 10
@@ -56,12 +74,14 @@ services:
       - "${KAFKA_1_EXTERNAL_PORT}:19092"
     environment:
       <<: *kafka_common_environment
-      KAFKA_CFG_NODE_ID: "1"
-      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka-1:9092,EXTERNAL://${KAFKA_EXTERNAL_HOST}:${KAFKA_1_EXTERNAL_PORT}
+      KAFKA_NODE_ID: "1"
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-1:9092,EXTERNAL://${KAFKA_EXTERNAL_HOST}:${KAFKA_1_EXTERNAL_PORT}
     deploy:
       <<: *kafka_deploy
     volumes:
-      - ${KAFKA_1_DATA_DIR}:/bitnami/kafka
+      # 공식 이미지는 UID/GID 1000(appuser)으로 실행되므로 호스트 디렉터리 소유자를 맞춰야 한다.
+      # install-kafka.sh 가 디렉터리 생성 시 chown 을 시도한다.
+      - ${KAFKA_1_DATA_DIR}:/var/lib/kafka/data
     healthcheck:
       <<: *kafka_healthcheck
     logging:
@@ -77,12 +97,12 @@ services:
       - "${KAFKA_2_EXTERNAL_PORT}:19092"
     environment:
       <<: *kafka_common_environment
-      KAFKA_CFG_NODE_ID: "2"
-      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka-2:9092,EXTERNAL://${KAFKA_EXTERNAL_HOST}:${KAFKA_2_EXTERNAL_PORT}
+      KAFKA_NODE_ID: "2"
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-2:9092,EXTERNAL://${KAFKA_EXTERNAL_HOST}:${KAFKA_2_EXTERNAL_PORT}
     deploy:
       <<: *kafka_deploy
     volumes:
-      - ${KAFKA_2_DATA_DIR}:/bitnami/kafka
+      - ${KAFKA_2_DATA_DIR}:/var/lib/kafka/data
     healthcheck:
       <<: *kafka_healthcheck
     logging:
@@ -98,40 +118,14 @@ services:
       - "${KAFKA_3_EXTERNAL_PORT}:19092"
     environment:
       <<: *kafka_common_environment
-      KAFKA_CFG_NODE_ID: "3"
-      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka-3:9092,EXTERNAL://${KAFKA_EXTERNAL_HOST}:${KAFKA_3_EXTERNAL_PORT}
+      KAFKA_NODE_ID: "3"
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-3:9092,EXTERNAL://${KAFKA_EXTERNAL_HOST}:${KAFKA_3_EXTERNAL_PORT}
     deploy:
       <<: *kafka_deploy
     volumes:
-      - ${KAFKA_3_DATA_DIR}:/bitnami/kafka
+      - ${KAFKA_3_DATA_DIR}:/var/lib/kafka/data
     healthcheck:
       <<: *kafka_healthcheck
-    logging:
-      <<: *default-logging
-    networks:
-      - 8llow8llowme-net
-
-  kafka-exporter:
-    image: ${KAFKA_EXPORTER_IMAGE:-danielqsj/kafka-exporter:v1.8.0}
-    container_name: kafka-exporter
-    restart: unless-stopped
-    depends_on:
-      kafka-1:
-        condition: service_healthy
-      kafka-2:
-        condition: service_healthy
-      kafka-3:
-        condition: service_healthy
-    command:
-      - --kafka.server=kafka-1:9092
-      - --kafka.server=kafka-2:9092
-      - --kafka.server=kafka-3:9092
-    ports:
-      - "${KAFKA_EXPORTER_PORT:-9308}:9308"
-    deploy:
-      resources:
-        limits:
-          memory: ${KAFKA_EXPORTER_MEM_LIMIT:-128m}
     logging:
       <<: *default-logging
     networks:
