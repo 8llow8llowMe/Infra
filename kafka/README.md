@@ -112,10 +112,11 @@ KAFKA_EXTERNAL_HOST=192.168.0.10
 
 | 서버 | 권장 여부 | 이유 |
 | --- | --- | --- |
-| `ollama-01` (192.168.0.10, x86 32GB) | **권장** | 메모리 여유가 가장 크고 Jenkins/Vault 와 동거 부담이 적다 |
+| `ollama-01` (192.168.0.10, x86 32GB) | **권장** | 가용 메모리가 가장 크고(~13GB) Jenkins/Vault 와 동거 부담이 적다 |
 | 추후 백엔드 미니PC | 권장 (이전 대상) | 백엔드 전용 서버 구성 시 함께 이전 |
-| `main-server` (192.168.0.11, Pi 8GB) | 비권장 | MySQL + Redis master + dev 백엔드가 이미 동거 중 |
-| `backend-1` (192.168.0.13, Pi 8GB) | 비권장 | 메모리 포화 상태. 3.5GB 여유 없음 |
+| `main-server` (192.168.0.11, Pi 8GB) | 비권장 | prod DB(MySQL) + Redis node1 + dev 백엔드 동거 호스트 |
+| `backend-1` (192.168.0.13, Pi 8GB) | 비권장 | dev 이전 후 여유가 생겼지만 bosspickseoul prod(9xxx) 배포 예정분으로 예약 |
+| `storage` (Pi 2GB) | 불가 | nginx/minio/redis node3 로 이미 메모리 한계 |
 
 Kafka UI(18080)는 인증이 없으므로 사설망에서만 접근하고 공개망/포트포워딩에 노출하지 않습니다.
 
