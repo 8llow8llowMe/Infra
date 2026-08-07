@@ -170,7 +170,7 @@ location /.well-known/acme-challenge/ {
 
 ### conf.d/kafka-ui.conf
 
-- `kafka.8llow8llowme.com` 을 ollama-01의 Kafka UI(`192.168.0.10:18080`)로 프록시
+- `kafka-ui.8llow8llowme.com` 을 ollama-01의 Kafka UI(`192.168.0.10:18080`)로 프록시
 - 토픽 메시지 실시간 조회(SSE/WebSocket) 지원
 - **basic auth 필수** — Kafka UI는 Grafana/Vault와 달리 자체 로그인이 없어, 프록시만 열면
   토픽 목록과 메시지 본문이 전부 공개됩니다. 사용 전 htpasswd를 먼저 만들어야 하며
