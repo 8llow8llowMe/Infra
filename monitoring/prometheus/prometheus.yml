@@ -27,3 +27,8 @@ scrape_configs:
     file_sd_configs:
       - files:
           - /etc/prometheus/targets/bosspickseoul-service-*.yml
+
+  - job_name: kafka
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/targets/kafka.yml

@@ -1,16 +1,16 @@
 services:
-  # Redis Node 1
+  # Redis Node 3 (storage 서버)
   redis:
     build:
       context: .
       dockerfile: redis.Dockerfile
     image: redis-custom:8.0.5
-    container_name: redis-node1
+    container_name: redis-node3
     restart: always
     entrypoint: ["sh", "/usr/local/bin/docker-entrypoint-redis.sh"]
     volumes:
       - ./data:/data
-      - ./redis-master.conf:/usr/local/etc/redis/redis.conf
+      - ./redis-slave.conf:/usr/local/etc/redis/redis.conf
       - ./docker-entrypoint-redis.sh:/usr/local/bin/docker-entrypoint-redis.sh
     ports:
       - "6379:6379"
@@ -27,13 +27,13 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  # Sentinel Node 1
+  # Sentinel Node 3 (storage 서버)
   sentinel:
     build:
       context: .
       dockerfile: redis.Dockerfile
     image: redis-custom:8.0.5
-    container_name: redis-sentinel-node1
+    container_name: redis-sentinel-node3
     restart: always
     entrypoint: ["sh", "/usr/local/bin/docker-entrypoint-sentinel.sh"]
     volumes:

@@ -108,7 +108,7 @@ KAFKA_EXTERNAL_HOST=192.168.0.10
 
 ## 배치 호스트 권장
 
-현재 서버 상황 기준 권장 배치입니다 (브로커 3 × 1g + UI 512m = **합산 약 3.5GB**).
+현재 서버 상황 기준 권장 배치입니다 (브로커 3 × 1g + UI 512m + exporter 128m = **합산 약 3.6GB**).
 
 | 서버 | 권장 여부 | 이유 |
 | --- | --- | --- |
@@ -322,11 +322,20 @@ sh install-kafka.sh
 
 운영 중에는 토픽 데이터가 전부 사라지므로 신중하게 사용합니다.
 
+## 모니터링 (kafka-exporter)
+
+compose 에 `kafka-exporter`(danielqsj/kafka-exporter)가 포함되어 있습니다.
+
+- 지표 endpoint: `http://<host-ip>:9308/metrics` (토픽/파티션 오프셋, consumer group lag 등)
+- Prometheus 는 `monitoring/prometheus/targets/kafka.yml` 로 스크레이프합니다
+  (job: `kafka`, Kafka 호스트 IP 변경 시 이 파일도 수정).
+- 반영: `curl -X POST http://192.168.0.14:9090/-/reload`
+
 ## 확장 로드맵
 
 1. 브로커를 서버 3대로 분리 (호스트 장애 내성 확보)
 2. controller 전용 노드 분리 (`process.roles` 분할)
-3. 모니터링(kafka exporter + Grafana) 추가
+3. Grafana Kafka 대시보드 추가 (exporter 지표 기반)
 4. consumer group scale-out
 
 ## 권장 다음 단계

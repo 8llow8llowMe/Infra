@@ -1,0 +1,7 @@
+# kafka-exporter (Kafka 클러스터 지표). ollama-01 에 Kafka 를 올린 뒤부터 수집된다.
+- targets:
+    - 192.168.0.10:9308
+  labels:
+    host: ollama-01
+    role: kafka
+    project: bosspickseoul
