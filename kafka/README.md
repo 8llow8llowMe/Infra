@@ -116,12 +116,38 @@ cd kafka
 cp .env.example .env
 ```
 
+`.env.example` 의 `KAFKA_CLUSTER_ID` 는 **비어 있습니다.** 직접 채우지 않아도 되고, `install-kafka.sh` 가 최초 실행 때 임의값을 생성해 `.env` 에 기록합니다. 예시값을 그대로 쓰지 않는 이유는, 서로 다른 클러스터가 같은 ID 를 가지면 툴에서 구분이 안 되고 실수로 섞였을 때 알아채기 어렵기 때문입니다.
+
+```text
+KAFKA_CLUSTER_ID 가 비어 있어 새로 생성합니다.
+생성한 KAFKA_CLUSTER_ID: R_NkW4-V6CaCQb3kZYsoWg
+.env 에 기록했습니다. 이 값은 최초 포맷 때 디스크에 새겨지므로 이후 바꾸지 마세요.
+```
+
+생성 방식은 2단계입니다.
+
+1. `docker run --rm $KAFKA_IMAGE /opt/kafka/bin/kafka-storage.sh random-uuid` — Kafka 공식 도구라 형식이 보장됩니다
+2. docker 실행이 안 되면 `openssl rand 16` 을 패딩 없는 base64url 로 변환합니다 (Kafka `Uuid` 와 같은 표기: 22자, 16바이트)
+
+두 방법 모두 실패하면 직접 넣으라는 안내와 함께 종료합니다.
+
+### 클러스터 ID 관련 주의
+
+- **한 번 기동한 뒤에는 바꾸지 않습니다.** 이 값은 최초 스토리지 포맷 때 각 노드의 `meta.properties` 에 새겨집니다. 나중에 바꾸면 브로커가 ID 불일치로 기동에 실패합니다.
+- 이미 포맷된 클러스터의 ID 를 잊었다면 디스크에서 확인합니다.
+
+  ```bash
+  grep cluster.id kafka-1-data/meta.properties
+  ```
+
+- 데이터가 이미 있는데 `.env` 의 ID 가 비어 있으면 스크립트가 **생성하지 않고 중단**합니다. 새 ID 를 만들면 디스크에 새겨진 ID 와 달라져 기동할 수 없기 때문입니다. 위 명령으로 확인해 `.env` 에 넣거나, 데이터를 버려도 되면 데이터 디렉터리를 삭제한 뒤 다시 실행합니다.
+
 운영 전에 특히 아래 값은 확인합니다.
 
 | 변수 | 설명 | 예시 |
 | --- | --- | --- |
 | `KAFKA_IMAGE` | Kafka 이미지 | `apache/kafka:4.3.1` |
-| `KAFKA_CLUSTER_ID` | KRaft 클러스터 ID (3노드 공통) | `MkU3OEVBNTcwNTJENDM2Qk` |
+| `KAFKA_CLUSTER_ID` | KRaft 클러스터 ID (3노드 공통) | **비워둠 — 자동 생성** |
 | `KAFKA_1/2/3_EXTERNAL_PORT` | 노드별 외부 advertised listener 포트 | `19092` / `29092` / `39092` |
 | `KAFKA_EXTERNAL_HOST` | 외부 클라이언트가 바라볼 호스트 IP 또는 DNS | `192.168.0.10` |
 | `KAFKA_1/2/3_DATA_DIR` | 노드별 호스트 데이터 경로 | `./kafka-1-data` 등 |
@@ -130,7 +156,8 @@ cp .env.example .env
 | `KAFKA_UI_MEM_LIMIT` | Kafka UI 컨테이너 메모리 상한 | `512m` |
 | `KAFKA_NUM_PARTITIONS` | 기본 파티션 수 | `3` |
 | `KAFKA_DEFAULT_REPLICATION_FACTOR` | 기본 복제 계수 (3노드 기준 3) | `3` |
-| `KAFKA_TRANSACTION_STATE_LOG_MIN_ISR` | 최소 ISR (3노드 기준 2) | `2` |
+| `KAFKA_MIN_INSYNC_REPLICAS` | acks=all 쓰기에 필요한 최소 복제본 (3노드 기준 2) | `2` |
+| `KAFKA_TRANSACTION_STATE_LOG_MIN_ISR` | 트랜잭션 로그 최소 ISR (3노드 기준 2) | `2` |
 | `KAFKA_AUTO_CREATE_TOPICS_ENABLE` | 토픽 자동 생성 허용 여부 | `false` |
 | `KAFKA_UI_IMAGE` | Kafka UI 이미지 | `ghcr.io/kafbat/kafka-ui:v1.5.0` |
 | `KAFKA_UI_PORT` | Kafka UI 외부 포트 | `18080` |
