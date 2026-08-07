@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Kafka 3노드(KRaft) 클러스터 + Kafka UI를 실행합니다.
+# Kafka 3노드(KRaft) 클러스터 + Kafka UI + kafka-exporter 를 실행합니다.
 #
 # KAFKA_CLUSTER_ID 가 비어 있으면 새로 생성해 .env 에 기록합니다.
 # 클러스터 ID 는 최초 스토리지 포맷 때 디스크에 새겨지므로, 한 번 정하면 바꿀 수 없습니다.
@@ -15,10 +15,33 @@ if [ ! -f "$ENV_FILE" ]; then
   exit 0
 fi
 
-set -a
-# shellcheck disable=SC1090
-. "$ENV_FILE"
-set +a
+# .env 를 셸로 source 하지 않고 필요한 KEY=VALUE 만 읽는다.
+#
+# source 하면 KAFKA_HEAP_OPTS=-Xms512m -Xmx512m 처럼 값에 공백이 있는 항목을
+# 셸이 "환경변수 접두어 + 명령" 으로 해석해 `-Xmx512m: not found` 로 죽는다.
+# Windows 에서 편집해 CRLF 가 섞인 경우도 있어 캐리지 리턴을 함께 제거한다.
+# docker compose 는 --env-file 로 .env 를 직접 읽으므로 export 할 필요가 없다.
+read_env() {
+  value=$(sed -n "s/^$1=//p" "$ENV_FILE" | tail -n 1 | tr -d '\r')
+  # docker compose 의 env-file 파서와 같게 감싼 따옴표를 제거한다.
+  case "$value" in
+    \"*\") value=${value#\"}; value=${value%\"} ;;
+    \'*\') value=${value#\'}; value=${value%\'} ;;
+  esac
+  printf '%s' "$value"
+}
+
+KAFKA_IMAGE=$(read_env KAFKA_IMAGE)
+KAFKA_CLUSTER_ID=$(read_env KAFKA_CLUSTER_ID)
+KAFKA_EXTERNAL_HOST=$(read_env KAFKA_EXTERNAL_HOST)
+KAFKA_1_DATA_DIR=$(read_env KAFKA_1_DATA_DIR)
+KAFKA_2_DATA_DIR=$(read_env KAFKA_2_DATA_DIR)
+KAFKA_3_DATA_DIR=$(read_env KAFKA_3_DATA_DIR)
+KAFKA_1_EXTERNAL_PORT=$(read_env KAFKA_1_EXTERNAL_PORT)
+KAFKA_2_EXTERNAL_PORT=$(read_env KAFKA_2_EXTERNAL_PORT)
+KAFKA_3_EXTERNAL_PORT=$(read_env KAFKA_3_EXTERNAL_PORT)
+KAFKA_UI_PORT=$(read_env KAFKA_UI_PORT)
+KAFKA_UI_CONTAINER_NAME=$(read_env KAFKA_UI_CONTAINER_NAME)
 
 # bitnami -> 공식 apache/kafka 이전 과정에서 변수명이 바뀌었다. 이전 .env 를 쓰면 조용히 실패하므로 먼저 막는다.
 if ! grep -q '^KAFKA_CLUSTER_ID=' "$ENV_FILE"; then
@@ -27,6 +50,14 @@ if ! grep -q '^KAFKA_CLUSTER_ID=' "$ENV_FILE"; then
   echo ".env.example 기준으로 .env 를 갱신해주세요. (README '공식 이미지 이전' 참고)"
   exit 1
 fi
+
+for required in KAFKA_IMAGE KAFKA_1_DATA_DIR KAFKA_2_DATA_DIR KAFKA_3_DATA_DIR; do
+  eval "required_value=\${$required}"
+  if [ -z "$required_value" ]; then
+    echo "오류: .env 의 $required 값이 비어 있습니다. .env.example 을 참고해 채워주세요."
+    exit 1
+  fi
+done
 
 # KRaft 클러스터 ID 를 생성한다.
 # 1순위: Kafka 공식 도구. base64url 16바이트라는 형식이 보장된다.
@@ -61,7 +92,7 @@ persist_cluster_id() {
   rm -f "$ENV_FILE.tmp"
 }
 
-if [ -z "${KAFKA_CLUSTER_ID:-}" ]; then
+if [ -z "$KAFKA_CLUSTER_ID" ]; then
   # 이미 포맷된 데이터가 있는데 ID 를 새로 만들면 디스크에 새겨진 ID 와 달라 브로커가 기동하지 못한다.
   for data_dir in "$KAFKA_1_DATA_DIR" "$KAFKA_2_DATA_DIR" "$KAFKA_3_DATA_DIR"; do
     if [ -n "$(ls -A "$data_dir" 2>/dev/null || true)" ]; then
@@ -83,13 +114,12 @@ if [ -z "${KAFKA_CLUSTER_ID:-}" ]; then
 
   persist_cluster_id "$new_cluster_id"
   KAFKA_CLUSTER_ID="$new_cluster_id"
-  export KAFKA_CLUSTER_ID
 
   echo "생성한 KAFKA_CLUSTER_ID: $KAFKA_CLUSTER_ID"
   echo ".env 에 기록했습니다. 이 값은 최초 포맷 때 디스크에 새겨지므로 이후 바꾸지 마세요."
 fi
 
-if [ "${KAFKA_EXTERNAL_HOST:-localhost}" = "localhost" ]; then
+if [ "${KAFKA_EXTERNAL_HOST:-localhost}" = "localhost" ] || [ -z "$KAFKA_EXTERNAL_HOST" ]; then
   echo "KAFKA_EXTERNAL_HOST 가 아직 localhost 입니다."
   echo "원격 클라이언트나 다른 서버에서 접속할 계획이면 .env 에 Kafka 호스트 IP 또는 DNS 를 넣어주세요."
 fi
