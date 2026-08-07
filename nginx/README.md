@@ -168,6 +168,23 @@ location /.well-known/acme-challenge/ {
 - 브라우저 기반 접근을 위한 CORS 헤더 포함
 - Console 접속 시 WebSocket 업그레이드 지원
 
+### conf.d/kafka-ui.conf
+
+- `kafka.8llow8llowme.com` 을 ollama-01의 Kafka UI(`192.168.0.10:18080`)로 프록시
+- 토픽 메시지 실시간 조회(SSE/WebSocket) 지원
+- **basic auth 필수** — Kafka UI는 Grafana/Vault와 달리 자체 로그인이 없어, 프록시만 열면
+  토픽 목록과 메시지 본문이 전부 공개됩니다. 사용 전 htpasswd를 먼저 만들어야 하며
+  파일이 없으면 nginx가 `500` 을 반환합니다.
+
+```bash
+cd ~/infra/nginx
+docker run --rm httpd:2.4-alpine htpasswd -nbB <사용자명> '<비밀번호>' > conf.d/.htpasswd-kafka-ui
+docker exec nginx nginx -t && docker exec nginx nginx -s reload
+```
+
+외부에서 접속할 일이 없다면 basic auth 대신 conf 안의 `allow 192.168.0.0/24; deny all;`
+주석을 푸는 편이 더 안전합니다. htpasswd 파일은 `.gitignore` 처리되어 있습니다.
+
 ---
 
 ## 실행 방법

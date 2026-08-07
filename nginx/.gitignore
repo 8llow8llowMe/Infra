@@ -1,3 +1,6 @@
 .env
 logs/
 
+# basic auth 자격증명. conf.d 는 컨테이너에 마운트되지만 nginx 는 *.conf 만 include 하므로
+# 이 파일은 설정으로 읽히지 않는다. 값이 민감하니 Git 에는 커밋하지 않는다.
+conf.d/.htpasswd*
