@@ -175,6 +175,13 @@ services:
       DYNAMIC_CONFIG_ENABLED: "false"
       KAFKA_CLUSTERS_0_NAME: bosspick-kafka
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka-1:9092,kafka-2:9092,kafka-3:9092
+      # 로그인 폼 인증. 끄는 옵션을 두지 않는 이유는, 인증 없이 열리면 토픽 메시지 본문까지
+      # 전부 열람 가능하기 때문이다. install-kafka.sh 가 아래 두 값이 비었으면 기동을 막는다.
+      # 호스트 포트(18080)가 공개되어 있어 nginx 를 우회해도 이 인증은 적용된다.
+      # 참고: 로컬 사용자 1명만 지원한다. 계정을 여러 개 두려면 OAuth/LDAP 연동이 필요하다.
+      AUTH_TYPE: LOGIN_FORM
+      SPRING_SECURITY_USER_NAME: ${KAFKA_UI_AUTH_USERNAME}
+      SPRING_SECURITY_USER_PASSWORD: ${KAFKA_UI_AUTH_PASSWORD}
     deploy:
       resources:
         limits:

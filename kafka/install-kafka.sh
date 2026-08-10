@@ -42,6 +42,8 @@ KAFKA_2_EXTERNAL_PORT=$(read_env KAFKA_2_EXTERNAL_PORT)
 KAFKA_3_EXTERNAL_PORT=$(read_env KAFKA_3_EXTERNAL_PORT)
 KAFKA_UI_PORT=$(read_env KAFKA_UI_PORT)
 KAFKA_UI_CONTAINER_NAME=$(read_env KAFKA_UI_CONTAINER_NAME)
+KAFKA_UI_AUTH_USERNAME=$(read_env KAFKA_UI_AUTH_USERNAME)
+KAFKA_UI_AUTH_PASSWORD=$(read_env KAFKA_UI_AUTH_PASSWORD)
 
 # bitnami -> 공식 apache/kafka 이전 과정에서 변수명이 바뀌었다. 이전 .env 를 쓰면 조용히 실패하므로 먼저 막는다.
 if ! grep -q '^KAFKA_CLUSTER_ID=' "$ENV_FILE"; then
@@ -58,6 +60,15 @@ for required in KAFKA_IMAGE KAFKA_1_DATA_DIR KAFKA_2_DATA_DIR KAFKA_3_DATA_DIR; 
     exit 1
   fi
 done
+
+# Kafka UI 는 인증 없이 열리면 토픽 메시지 본문까지 전부 열람 가능하다.
+# 호스트 포트(18080)가 공개되므로 nginx 를 우회해도 접근되기에, 계정 없이는 띄우지 않는다.
+if [ -z "$KAFKA_UI_AUTH_USERNAME" ] || [ -z "$KAFKA_UI_AUTH_PASSWORD" ]; then
+  echo "오류: Kafka UI 로그인 계정이 설정되지 않았습니다."
+  echo ".env 의 KAFKA_UI_AUTH_USERNAME 과 KAFKA_UI_AUTH_PASSWORD 를 채워주세요."
+  echo "인증 없이 띄우면 토픽 목록과 메시지 본문이 누구에게나 열립니다."
+  exit 1
+fi
 
 # KRaft 클러스터 ID 를 생성한다.
 # 1순위: Kafka 공식 도구. base64url 16바이트라는 형식이 보장된다.

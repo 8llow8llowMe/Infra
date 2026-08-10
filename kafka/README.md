@@ -11,6 +11,7 @@
 - controller quorum: `1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093`
 - 복제: replication factor `3`, min ISR `2` (브로커 1대 장애까지 읽기/쓰기 지속)
 - UI: `ghcr.io/kafbat/kafka-ui:v1.5.0` (provectuslabs/kafka-ui 는 개발 중단 — 유지보수 포크로 교체)
+- UI 인증: 로그인 폼(`AUTH_TYPE=LOGIN_FORM`) 필수 — `.env` 의 계정/비밀번호를 사용
 - 내부 접속 주소: `kafka-1:9092,kafka-2:9092,kafka-3:9092` (같은 호스트의 `8llow8llowme-net` 컨테이너 전용)
 - 외부 접속 주소: `${KAFKA_EXTERNAL_HOST}:19092/29092/39092` (다른 서버의 클라이언트용)
 - Docker 네트워크: `8llow8llowme-net`
@@ -161,6 +162,8 @@ KAFKA_CLUSTER_ID 가 비어 있어 새로 생성합니다.
 | `KAFKA_AUTO_CREATE_TOPICS_ENABLE` | 토픽 자동 생성 허용 여부 | `false` |
 | `KAFKA_UI_IMAGE` | Kafka UI 이미지 | `ghcr.io/kafbat/kafka-ui:v1.5.0` |
 | `KAFKA_UI_PORT` | Kafka UI 외부 포트 | `18080` |
+| `KAFKA_UI_AUTH_USERNAME` | Kafka UI 로그인 계정 | `admin` |
+| `KAFKA_UI_AUTH_PASSWORD` | Kafka UI 로그인 비밀번호 (**필수**) | 직접 지정 |
 | `TZ` | 타임존 | `Asia/Seoul` |
 
 내부 리스너(9092)와 컨트롤러 포트(9093)는 컨테이너 내부 고정이라 변수로 두지 않습니다.
@@ -194,7 +197,11 @@ KAFKA_EXTERNAL_HOST=192.168.0.10
 | `backend-1` (192.168.0.13, Pi 8GB) | 비권장 | dev 이전 후 여유가 생겼지만 bosspickseoul prod(9xxx) 배포 예정분으로 예약 |
 | `storage` (Pi 2GB) | 불가 | nginx/minio/redis node3 로 이미 메모리 한계 |
 
-Kafka UI(18080)는 인증이 없으므로 사설망에서만 접근하고 공개망/포트포워딩에 노출하지 않습니다.
+Kafka UI(18080)에는 로그인 폼 인증(`AUTH_TYPE=LOGIN_FORM`)이 걸려 있습니다. `.env` 의
+`KAFKA_UI_AUTH_USERNAME` / `KAFKA_UI_AUTH_PASSWORD` 가 비어 있으면 `install-kafka.sh` 가 기동을 막습니다.
+인증은 애플리케이션 계층이라 nginx 를 우회해 호스트 포트로 직접 붙어도 적용됩니다.
+kafbat UI 의 로그인 폼 인증은 로컬 사용자 1명만 지원하므로, 계정을 여러 개 두려면 OAuth/LDAP 연동이 필요합니다.
+도메인 노출은 `nginx/conf.d/kafka-ui.conf` 를 참고하세요.
 
 ## 실행
 
