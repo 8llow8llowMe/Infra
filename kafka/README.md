@@ -198,7 +198,7 @@ KAFKA_EXTERNAL_HOST=192.168.0.10
 | `storage` (Pi 2GB) | 불가 | nginx/minio/redis node3 로 이미 메모리 한계 |
 
 Kafka UI(18080)에는 로그인 폼 인증(`AUTH_TYPE=LOGIN_FORM`)이 걸려 있습니다. `.env` 의
-`KAFKA_UI_AUTH_USERNAME` / `KAFKA_UI_AUTH_PASSWORD` 가 비어 있으면 `install-kafka.sh` 가 기동을 막습니다.
+`KAFKA_UI_AUTH_USERNAME` / `KAFKA_UI_AUTH_PASSWORD` 가 비어 있으면 `install-kafka.sh` 가 기동을 막고, compose 도 `${VAR:?}` 문법으로 같은 검사를 하므로 `docker compose up` 을 직접 실행해도 빈 계정으로 뜨지 않습니다.
 인증은 애플리케이션 계층이라 nginx 를 우회해 호스트 포트로 직접 붙어도 적용됩니다.
 kafbat UI 의 로그인 폼 인증은 로컬 사용자 1명만 지원하므로, 계정을 여러 개 두려면 OAuth/LDAP 연동이 필요합니다.
 도메인 노출은 `nginx/conf.d/kafka-ui.conf` 를 참고하세요.
