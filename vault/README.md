@@ -206,29 +206,46 @@ kv/bosspickseoul/frontend/prod/env
 
 key 목록의 기준은 애플리케이션 레포의 `frontend/.env.example` 이고, 배포 절차는 `frontend/docs/runbook/deployment.md` 를 따릅니다.
 
-| key | 시점 | 필수 | dev 값 예시 |
+#### 필수 — 없으면 파이프라인이 실패합니다
+
+| key | 시점 | dev 값 | prod 값 |
 | --- | --- | --- | --- |
-| `NEXT_PUBLIC_API_URL` | 빌드 | ✅ | `https://api-dev.bosspickseoul.com` |
-| `NEXT_PUBLIC_SITE_URL` | 빌드 | ✅ | `https://dev.bosspickseoul.com` |
-| `NEXT_PUBLIC_WS_URL` | 빌드 | | 비우면 API_URL 에서 `wss://.../ws` 로 유도 |
-| `NEXT_PUBLIC_KAKAOMAP_API_KEY` | 빌드 | | |
-| `NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY` | 빌드 | | |
-| `NEXT_PUBLIC_FIREBASE_API_KEY` | 빌드 | | |
-| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | 빌드 | | |
-| `NEXT_PUBLIC_FIREBASE_APP_ID` | 빌드 | | |
-| `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID` | 빌드 | | |
-| `NEXT_PUBLIC_FIREBASE_VAPID_KEY` | 빌드 | | |
-| `TIME_ZONE` | 런타임 | ✅ | `Asia/Seoul` |
-| `AUTH_SESSION_SECRET` | 런타임 | ✅ | `openssl rand -base64 48` (32자 이상) |
-| `BACKEND_API_URL` | 런타임 | ✅ | `https://api-dev.bosspickseoul.com` |
-| `FRONTEND_WEB_PORT_DEV` | 런타임 | ✅ | `6300` |
-| `FRONTEND_WEB_PORT_PROD` | 런타임 | ✅ | `9300` |
-| `FRONTEND_WEB_MEM_LIMIT_DEV` | 런타임 | | 비우면 `512m` |
-| `FRONTEND_WEB_MEM_LIMIT_PROD` | 런타임 | | 비우면 `768m` |
+| `NEXT_PUBLIC_SITE_URL` | 빌드 | `https://dev.bosspickseoul.com` | `https://www.bosspickseoul.com` |
+| `NEXT_PUBLIC_WS_URL` | 빌드 | `wss://api-dev.bosspickseoul.com/ws` | `wss://api.bosspickseoul.com/ws` |
+| `NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY` | 빌드 | 카카오 콘솔의 JavaScript 키 (dev/prod 동일) | 〃 |
+| `AUTH_SESSION_SECRET` | 런타임 | `openssl rand -base64 48` | dev 와 **다른** 값 |
+| `BACKEND_API_URL` | 런타임 | `https://api-dev.bosspickseoul.com` | `https://api.bosspickseoul.com` |
+| `TIME_ZONE` | 런타임 | `Asia/Seoul` | `Asia/Seoul` |
+| `FRONTEND_WEB_PORT_DEV` | 런타임 | `6300` | `6300` |
+| `FRONTEND_WEB_PORT_PROD` | 런타임 | `9300` | `9300` |
 
-`_DEV` 와 `_PROD` 포트를 **양쪽 secret 에 모두** 넣어야 합니다. compose 파일 하나에 dev/prod 서비스가 같이 정의되어 있어 `docker compose config` 가 파일 전체를 검증하기 때문입니다. backend secret 도 같은 이유로 두 포트를 모두 담고 있습니다.
+#### 선택 — 비워두거나 아예 넣지 않아도 됩니다
 
-`NEXT_PUBLIC_*` 는 브라우저 번들에 그대로 박히므로 **비밀값을 넣지 않습니다.**
+| key | 시점 | 비었을 때 |
+| --- | --- | --- |
+| `FRONTEND_WEB_MEM_LIMIT_DEV` / `_PROD` | 런타임 | compose 기본값 `512m` / `768m` |
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | 빌드 | FCM 웹 푸시(채팅 알림)가 자동 비활성화됩니다. 앱 나머지는 정상 동작합니다. |
+| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | 빌드 | 〃 |
+| `NEXT_PUBLIC_FIREBASE_APP_ID` | 빌드 | 〃 |
+| `NEXT_PUBLIC_FIREBASE_VAPID_KEY` | 빌드 | 〃 |
+| `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID` | 빌드 | Analytics 용. 없어도 푸시는 동작합니다. |
+
+Firebase 4종은 **넷이 모두 있어야** 푸시가 켜집니다. 하나라도 비면 코드가 스스로 비활성화하므로, 푸시를 쓰기로 정하기 전에는 Vault 에 넣지 않아도 됩니다.
+
+#### 넣지 않는 key
+
+| key | 이유 |
+| --- | --- |
+| `NEXT_PUBLIC_API_URL` | 브라우저 REST 호출은 same-origin `/api/bff` 로 나가고 백엔드 주소는 서버 쪽 `BACKEND_API_URL` 만 압니다. 번들에 넣을 이유가 없습니다. |
+| `NEXT_PUBLIC_KAKAOMAP_API_KEY` | 카카오는 지도 SDK 와 공유 SDK 가 **같은 JavaScript 키** 하나를 씁니다. `NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY` 로 통합했습니다. |
+| `BOSSPICK_API_DOCS_URL` | 로컬에서 OpenAPI 문서를 내려받는 스크립트 전용입니다. |
+
+#### 주의
+
+- **`AUTH_SESSION_SECRET` 은 환경당 한 번만 만들고 고정합니다.** 배포마다 새로 만들면 안 됩니다. 이 값은 세션 쿠키의 A256GCM 암호화 키(SHA-256 해시)라, 바뀌는 순간 기존 쿠키를 복호화할 수 없어 **로그인한 사용자가 전원 로그아웃**됩니다. 유출됐을 때만 의도적으로 교체하고, 그때도 전원 로그아웃을 감수하는 작업으로 다룹니다. dev 와 prod 는 서로 다른 값을 씁니다.
+- **`_DEV` 와 `_PROD` 포트를 양쪽 secret 에 모두** 넣어야 합니다. compose 파일 하나에 dev/prod 서비스가 같이 정의되어 있어 `docker compose config` 가 파일 전체를 검증하기 때문입니다. backend secret 도 같은 이유로 두 포트를 모두 담고 있습니다.
+- **`NEXT_PUBLIC_*` 에는 비밀값을 넣지 않습니다.** 브라우저 번들에 문자열로 그대로 박힙니다. 위 목록의 카카오·Firebase 키는 원래 클라이언트 공개용이라 괜찮습니다.
+- **`BACKEND_API_URL` 은 사설 IP 가 아니라 공개 도메인**을 씁니다. dev 프론트와 dev 게이트웨이가 같은 호스트에 있어 `http://192.168.0.11:6000` 으로 질러도 될 것 같지만, auth API(`/api/v1/auth`, `/api/v1/members`)는 게이트웨이를 거치지 않고 auth-service 로 직결되며 그 분기를 nginx 가 합니다.
 
 ### kv 경로 초기화
 
