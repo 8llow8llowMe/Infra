@@ -368,9 +368,14 @@ docker logs -f nginx
 
 ## BossPickSeoul 도메인 맵
 
-- `https://www.bosspickseoul.com` -> 운영 웹 (`web-ssr:3000`)
-- `https://api.bosspickseoul.com` -> 운영 API 게이트웨이 (backend-1 `192.168.0.13:9000`)
-- `https://api-dev.bosspickseoul.com` -> 개발 API 게이트웨이 (main-server `192.168.0.11:6000`)
+| 도메인 | 대상 | 호스트 | 설정 파일 |
+| --- | --- | --- | --- |
+| `https://www.bosspickseoul.com` | 운영 웹 (Next.js SSR) | backend-1 `192.168.0.13:9300` | `conf.d/bosspickseoul.conf` |
+| `https://dev.bosspickseoul.com` | 개발 웹 (Next.js SSR) | main-server `192.168.0.11:6300` | `conf.d/dev.bosspickseoul.conf` |
+| `https://api.bosspickseoul.com` | 운영 API 게이트웨이 | backend-1 `192.168.0.13:9000` | `conf.d/api.bosspickseoul.conf` |
+| `https://api-dev.bosspickseoul.com` | 개발 API 게이트웨이 | main-server `192.168.0.11:6000` | `conf.d/api-dev.bosspickseoul.conf` |
+
+FE/BE 모두 **컨테이너명이 아니라 사설 IP로 프록시**합니다. `8llow8llowme-net` 은 호스트별 브리지라 storage(`192.168.0.12`)에서 도는 nginx 는 다른 호스트의 컨테이너명을 해석하지 못합니다. 과거 `web-ssr:3000` 으로 프록시하던 시절에는 같은 호스트의 tripmarble 컨테이너가 BossPickSeoul 요청에 응답하는 사고가 있었으므로, 공유 컨테이너명으로는 되돌리지 않습니다.
 
 `api` / `api-dev` 도메인은 tripmarble과 동일한 구조로, auth-service 단독 호출과 api-gateway 경유 호출을 분리하고, Swagger는 api-gateway가 auth 포함 서비스 문서를 집계해 제공합니다. 자세한 라우팅은 `conf.d/api.bosspickseoul.conf`, `conf.d/api-dev.bosspickseoul.conf`를 참고합니다.
 
@@ -378,14 +383,18 @@ docker logs -f nginx
 
 - `bosspickseoul.com` A/AAAA -> 공개 Nginx 호스트
 - `www.bosspickseoul.com` A/AAAA 또는 CNAME -> 공개 Nginx 호스트
+- `dev.bosspickseoul.com` A/AAAA 또는 CNAME -> 공개 Nginx 호스트
 - `api.bosspickseoul.com` A/AAAA 또는 CNAME -> 공개 Nginx 호스트
 - `api-dev.bosspickseoul.com` A/AAAA 또는 CNAME -> 공개 Nginx 호스트
 
 ### Certbot 체크리스트
 
 - `bosspickseoul.com` 인증서는 `bosspickseoul.com`과 `www.bosspickseoul.com`을 포함합니다
+- `dev.bosspickseoul.com`은 별도 인증서가 필요합니다
 - `api.bosspickseoul.com`은 별도 인증서가 필요합니다
 - `api-dev.bosspickseoul.com`은 별도 인증서가 필요합니다
+
+`conf.d/dev.bosspickseoul.conf` 는 **HTTPS 블록이 주석 처리된 상태로 커밋**되어 있습니다. `ssl_certificate` 파일이 없으면 nginx 가 기동조차 못 하고, 이 nginx 는 전 도메인의 단일 인그레스라 다른 서비스까지 함께 내려갑니다. 인증서를 발급한 뒤 주석을 풀고 `nginx -t && nginx -s reload` 하십시오.
 
 예시 명령어:
 

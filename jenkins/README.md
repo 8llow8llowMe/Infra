@@ -156,14 +156,17 @@ docker compose --env-file .env -f docker-compose-jenkins-deploy-agent.yml up -d 
 
 ## 노드/라벨 예시
 
-| Jenkins 노드명 | 실제 서버 | Jenkins 라벨 | 역할 |
-| --- | --- | --- | --- |
-| `jenkins-builder-agent` | `192.168.0.10` | `builder builder-backend` | Gradle build/test |
-| `frontend-builder-agent` | 빌드 서버 또는 Jenkins 서버 | `builder-frontend` | Next.js install/build |
-| `backend-dev-agent` | main-server (`192.168.0.11`) | `deploy-backend-dev` | 백엔드 dev compose 배포 |
-| `backend-prod-agent` | backend-1 (`192.168.0.13`) | `deploy-backend-prod` | 백엔드 prod compose 배포 |
-| `frontend-dev-agent` | deploy 서버 | `deploy-frontend-dev` | Next.js dev/prod app 배포 |
-| `frontend-prod-agent` | deploy 서버 | `deploy-frontend-prod` | 프론트 운영 배포 |
+| Jenkins 노드명 | 실제 서버 | Jenkins 라벨 | 역할 | 상태 |
+| --- | --- | --- | --- | --- |
+| `jenkins-builder-agent` | ollama-01 (`192.168.0.10`) | `builder builder-backend builder-frontend` | Gradle build/test, Next.js install/build | 기동 중 |
+| `backend-dev-agent` | main-server (`192.168.0.11`) | `deploy-backend-dev` | 백엔드 dev compose 배포 | 기동 중 |
+| `backend-prod-agent` | backend-1 (`192.168.0.13`) | `deploy-backend-prod` | 백엔드 prod compose 배포 | **미기동 — 추가 필요** |
+| `frontend-dev-agent` | main-server (`192.168.0.11`) | `deploy-frontend-dev` | 프론트 dev compose 배포 | **미기동 — 추가 필요** |
+| `frontend-prod-agent` | backend-1 (`192.168.0.13`) | `deploy-frontend-prod` | 프론트 prod compose 배포 | **미기동 — 추가 필요** |
+
+프론트 빌드용 노드를 따로 만들지 않고 `jenkins-builder-agent` 에 `builder-frontend` 라벨만 추가하는 이유는, 이 이미지가 이미 Node.js 22 와 `pnpm` 을 포함하고 있기 때문입니다(`jenkins-builder-agent.Dockerfile`). 컨테이너를 더 띄우지 않고 Jenkins UI 의 노드 라벨만 수정하면 됩니다.
+
+> **아키텍처 주의** — 빌더가 도는 ollama-01 은 x86_64(Ryzen 7 8845HS)이고, 배포 대상 main-server / backend-1 / storage 는 모두 aarch64 입니다. 백엔드는 JAR 이라 무관하지만, 프론트는 빌더에서 만든 `.next/standalone` 을 arm64 호스트에서 실행합니다. 현재 프론트 의존성에는 네이티브 모듈이 없어 문제가 없고, 파이프라인이 번들에 `*.node` 바이너리가 섞이면 빌드를 UNSTABLE 로 표시해 알려줍니다. 그 경고가 뜨면 `builder-frontend` 라벨을 arm64 노드로 옮겨야 합니다.
 
 같은 deploy compose를 여러 번 쓰려면 각 agent별 `.env`에서 아래 값을 다르게 둡니다.
 
