@@ -186,8 +186,49 @@ docker exec -it vault vault kv get kv/bosspickseoul/backend/prod/core/api
 Jenkins 경로는 다음처럼 단순하게 유지합니다.
 
 ```text
-VAULT_SECRET_PATH=kv/bosspickseoul/backend/dev/env
+kv/bosspickseoul/backend/dev/env
+kv/bosspickseoul/backend/prod/env
+kv/bosspickseoul/frontend/dev/env
+kv/bosspickseoul/frontend/prod/env
 ```
+
+파이프라인은 `{root}/{env}/env` 규칙으로 경로를 조립합니다. root 기본값은 backend 잡이 `kv/bosspickseoul/backend`, frontend 잡이 `kv/bosspickseoul/frontend` 입니다. 잡 파라미터 `VAULT_SECRET_ROOT` / `VAULT_SECRET_PATH` 로 덮어쓸 수 있지만 평소에는 건드리지 않습니다.
+
+> **정책 갱신 필요** — `policies/jenkins-bosspickseoul.hcl` 에 frontend 경로를 추가했습니다. 반영하지 않으면 프론트 파이프라인이 시크릿을 읽을 때 403 이 납니다. `.hcl` 을 고친 뒤에는 bootstrap 을 다시 실행해야 Vault 에 적용됩니다.
+>
+> ```bash
+> docker exec -it -e VAULT_TOKEN='<root-token>' vault sh /vault/scripts/bootstrap-bosspickseoul.sh
+> ```
+
+### 프론트 secret 에 넣을 key
+
+주입 시점이 둘로 나뉩니다. `NEXT_PUBLIC_*` 는 **빌드 시점에 코드로 인라인**되므로 컨테이너 환경변수로 넣어도 무시됩니다. 그래서 dev 와 prod 를 각각 빌드합니다.
+
+key 목록의 기준은 애플리케이션 레포의 `frontend/.env.example` 이고, 배포 절차는 `frontend/docs/runbook/deployment.md` 를 따릅니다.
+
+| key | 시점 | 필수 | dev 값 예시 |
+| --- | --- | --- | --- |
+| `NEXT_PUBLIC_API_URL` | 빌드 | ✅ | `https://api-dev.bosspickseoul.com` |
+| `NEXT_PUBLIC_SITE_URL` | 빌드 | ✅ | `https://dev.bosspickseoul.com` |
+| `NEXT_PUBLIC_WS_URL` | 빌드 | | 비우면 API_URL 에서 `wss://.../ws` 로 유도 |
+| `NEXT_PUBLIC_KAKAOMAP_API_KEY` | 빌드 | | |
+| `NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY` | 빌드 | | |
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | 빌드 | | |
+| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | 빌드 | | |
+| `NEXT_PUBLIC_FIREBASE_APP_ID` | 빌드 | | |
+| `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID` | 빌드 | | |
+| `NEXT_PUBLIC_FIREBASE_VAPID_KEY` | 빌드 | | |
+| `TIME_ZONE` | 런타임 | ✅ | `Asia/Seoul` |
+| `AUTH_SESSION_SECRET` | 런타임 | ✅ | `openssl rand -base64 48` (32자 이상) |
+| `BACKEND_API_URL` | 런타임 | ✅ | `https://api-dev.bosspickseoul.com` |
+| `FRONTEND_WEB_PORT_DEV` | 런타임 | ✅ | `6300` |
+| `FRONTEND_WEB_PORT_PROD` | 런타임 | ✅ | `9300` |
+| `FRONTEND_WEB_MEM_LIMIT_DEV` | 런타임 | | 비우면 `512m` |
+| `FRONTEND_WEB_MEM_LIMIT_PROD` | 런타임 | | 비우면 `768m` |
+
+`_DEV` 와 `_PROD` 포트를 **양쪽 secret 에 모두** 넣어야 합니다. compose 파일 하나에 dev/prod 서비스가 같이 정의되어 있어 `docker compose config` 가 파일 전체를 검증하기 때문입니다. backend secret 도 같은 이유로 두 포트를 모두 담고 있습니다.
+
+`NEXT_PUBLIC_*` 는 브라우저 번들에 그대로 박히므로 **비밀값을 넣지 않습니다.**
 
 ### kv 경로 초기화
 
