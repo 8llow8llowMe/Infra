@@ -212,16 +212,17 @@ key 목록의 기준은 애플리케이션 레포의 `frontend/.env.example` 이
 | `AUTH_SESSION_SECRET` | 런타임 | `openssl rand -base64 48` | dev 와 **다른** 값 |
 | `BACKEND_API_URL` | 런타임 | `https://api-dev.bosspickseoul.com` | `https://api.bosspickseoul.com` |
 | `TIME_ZONE` | 런타임 | `Asia/Seoul` | `Asia/Seoul` |
-| `FRONTEND_WEB_PORT_DEV` | 런타임 | `6300` | — (넣지 않음) |
-| `FRONTEND_WEB_PORT_PROD` | 런타임 | — (넣지 않음) | `9300` |
+| `FRONTEND_WEB_PORT` | 런타임 | `6300` | `9300` |
+| `FRONTEND_WEB_MEM_LIMIT` | 런타임 | `512m` | `768m` |
 
-포트는 **그 환경에 해당하는 것 하나만** 넣습니다. compose 파일 하나에 dev/prod 서비스가 같이 정의되어 있어 `docker compose config` 가 배포하지 않는 쪽까지 해석하지만, 양쪽 포트 모두 compose 에 기본값(`:-6300` / `:-9300`)이 있어 반대편 값이 없어도 문제가 없습니다. 실제로 쓰이는 포트는 파이프라인의 런타임 키 검사가 강제합니다.
+포트와 메모리 상한에 **환경 접미사가 없습니다.** 환경별로 `.env.runtime` 이 따로 만들어지므로 각 secret 에 값 하나만 넣으면 됩니다. compose 파일 하나에 dev/prod 서비스가 같이 정의되어 있지만 두 서비스가 같은 변수명을 참조하므로, 배포하지 않는 쪽 값을 따로 넣을 필요가 없습니다.
+
+프론트 compose 에는 **환경변수 기본값(`:-`)을 두지 않습니다.** 값이 비면 조용히 다른 포트로 뜨는 대신 파이프라인의 `Runtime env key check` 에서 배포가 중단됩니다.
 
 #### 선택 — 비워두거나 아예 넣지 않아도 됩니다
 
 | key | 시점 | 비었을 때 |
 | --- | --- | --- |
-| `FRONTEND_WEB_MEM_LIMIT_DEV` / `_PROD` | 런타임 | compose 기본값 `512m` / `768m` |
 | `NEXT_PUBLIC_FIREBASE_API_KEY` | 빌드 | FCM 웹 푸시(채팅 알림)가 자동 비활성화됩니다. 앱 나머지는 정상 동작합니다. |
 | `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | 빌드 | 〃 |
 | `NEXT_PUBLIC_FIREBASE_APP_ID` | 빌드 | 〃 |
