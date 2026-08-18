@@ -212,8 +212,10 @@ key 목록의 기준은 애플리케이션 레포의 `frontend/.env.example` 이
 | `AUTH_SESSION_SECRET` | 런타임 | `openssl rand -base64 48` | dev 와 **다른** 값 |
 | `BACKEND_API_URL` | 런타임 | `https://api-dev.bosspickseoul.com` | `https://api.bosspickseoul.com` |
 | `TIME_ZONE` | 런타임 | `Asia/Seoul` | `Asia/Seoul` |
-| `FRONTEND_WEB_PORT_DEV` | 런타임 | `6300` | `6300` |
-| `FRONTEND_WEB_PORT_PROD` | 런타임 | `9300` | `9300` |
+| `FRONTEND_WEB_PORT_DEV` | 런타임 | `6300` | — (넣지 않음) |
+| `FRONTEND_WEB_PORT_PROD` | 런타임 | — (넣지 않음) | `9300` |
+
+포트는 **그 환경에 해당하는 것 하나만** 넣습니다. compose 파일 하나에 dev/prod 서비스가 같이 정의되어 있어 `docker compose config` 가 배포하지 않는 쪽까지 해석하지만, 양쪽 포트 모두 compose 에 기본값(`:-6300` / `:-9300`)이 있어 반대편 값이 없어도 문제가 없습니다. 실제로 쓰이는 포트는 파이프라인의 런타임 키 검사가 강제합니다.
 
 #### 선택 — 비워두거나 아예 넣지 않아도 됩니다
 
@@ -239,7 +241,6 @@ Firebase 4종은 **넷이 모두 있어야** 푸시가 켜집니다. 하나라�
 #### 주의
 
 - **`AUTH_SESSION_SECRET` 은 환경당 한 번만 만들고 고정합니다.** 배포마다 새로 만들면 안 됩니다. 이 값은 세션 쿠키의 A256GCM 암호화 키(SHA-256 해시)라, 바뀌는 순간 기존 쿠키를 복호화할 수 없어 **로그인한 사용자가 전원 로그아웃**됩니다. 유출됐을 때만 의도적으로 교체하고, 그때도 전원 로그아웃을 감수하는 작업으로 다룹니다. dev 와 prod 는 서로 다른 값을 씁니다.
-- **`_DEV` 와 `_PROD` 포트를 양쪽 secret 에 모두** 넣어야 합니다. compose 파일 하나에 dev/prod 서비스가 같이 정의되어 있어 `docker compose config` 가 파일 전체를 검증하기 때문입니다. backend secret 도 같은 이유로 두 포트를 모두 담고 있습니다.
 - **`NEXT_PUBLIC_*` 에는 비밀값을 넣지 않습니다.** 브라우저 번들에 문자열로 그대로 박힙니다. 위 목록의 카카오·Firebase 키는 원래 클라이언트 공개용이라 괜찮습니다.
 - **`BACKEND_API_URL` 은 사설 IP 가 아니라 공개 도메인**을 씁니다. dev 프론트와 dev 게이트웨이가 같은 호스트에 있어 `http://192.168.0.11:6000` 으로 질러도 될 것 같지만, auth API(`/api/v1/auth`, `/api/v1/members`)는 게이트웨이를 거치지 않고 auth-service 로 직결되며 그 분기를 nginx 가 합니다.
 
