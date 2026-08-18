@@ -194,11 +194,7 @@ kv/bosspickseoul/frontend/prod/env
 
 파이프라인은 `{root}/{env}/env` 규칙으로 경로를 조립합니다. root 기본값은 backend 잡이 `kv/bosspickseoul/backend`, frontend 잡이 `kv/bosspickseoul/frontend` 입니다. 잡 파라미터 `VAULT_SECRET_ROOT` / `VAULT_SECRET_PATH` 로 덮어쓸 수 있지만 평소에는 건드리지 않습니다.
 
-> **정책 갱신 필요** — `policies/jenkins-bosspickseoul.hcl` 에 frontend 경로를 추가했습니다. 반영하지 않으면 프론트 파이프라인이 시크릿을 읽을 때 403 이 납니다. `.hcl` 을 고친 뒤에는 bootstrap 을 다시 실행해야 Vault 에 적용됩니다.
->
-> ```bash
-> docker exec -it -e VAULT_TOKEN='<root-token>' vault sh /vault/scripts/bootstrap-bosspickseoul.sh
-> ```
+frontend 경로는 `policies/jenkins-bosspickseoul.hcl` 에 backend 와 함께 들어 있습니다. **Jenkins credential 을 따로 만들 필요는 없습니다** — 두 파이프라인이 같은 AppRole 을 씁니다. 자세한 내용과 정책 반영 절차는 `Bootstrap` 절을 참고합니다.
 
 ### 프론트 secret 에 넣을 key
 
@@ -290,9 +286,22 @@ docker exec -it vault vault kv get -mount="kv" bosspickseoul/backend/dev/env
 
 정책 파일:
 
-- `policies/jenkins-bosspickseoul.hcl`: Jenkins가 배포용 backend secret을 읽는 권한
+- `policies/jenkins-bosspickseoul.hcl`: Jenkins가 배포용 secret을 읽는 권한 (**backend + frontend 공용**)
 - `policies/backend-bosspickseoul.hcl`: backend-1 deploy/runtime 용 읽기 권한
 - `policies/ui-bosspickseoul.hcl`: Web UI 사용자가 `kv/bosspickseoul/*` 시크릿을 관리하는 권한
+
+### AppRole 은 파이프라인별로 나누지 않습니다
+
+backend 파이프라인과 frontend 파이프라인이 **같은 AppRole(`jenkins-bosspickseoul`) 하나**를 씁니다. 그래서 `jenkins-frontend-...` 같은 role 이나 Jenkins credential 을 따로 만들 필요가 없습니다.
+
+| AppRole | 쓰는 곳 | Jenkins credential | 읽는 경로 |
+| --- | --- | --- | --- |
+| `jenkins-bosspickseoul` | backend 잡, **frontend 잡** | `bosspickseoul-vault-role-id`, `bosspickseoul-vault-secret-id` | `kv/bosspickseoul/backend/*`, `kv/bosspickseoul/frontend/*` |
+| `backend-bosspickseoul` | backend-1 deploy/runtime | (deploy agent secret) | `kv/bosspickseoul/backend/*` |
+
+두 파이프라인의 `VAULT_ROLE_ID_CREDENTIAL_ID` / `VAULT_SECRET_ID_CREDENTIAL_ID` 기본값이 같기 때문에, 새 애플리케이션 그룹이 생기면 **credential 을 추가하는 게 아니라 `jenkins-bosspickseoul.hcl` 에 경로 블록을 추가**하고 bootstrap 을 다시 돌립니다. 실제로 frontend 도 그렇게 붙였습니다.
+
+role 을 파이프라인별로 쪼개면 권한은 더 좁아지지만 credential 쌍과 회전 절차가 그만큼 늘어납니다. 지금 규모에서는 통합 쪽이 맞습니다.
 
 실행 시점:
 
@@ -331,6 +340,34 @@ Success! Uploaded policy: ui-bosspickseoul
 ```
 
 이미 한 번 실행한 뒤 다시 실행하면 `kv`, `approle`, `userpass` 활성화 메시지는 생략될 수 있습니다. policy와 AppRole은 다시 등록되어 갱신됩니다.
+
+### 정책(`.hcl`)만 고쳤을 때 — bootstrap 재실행이 전부입니다
+
+`policies/` 는 컨테이너에 bind mount(`./policies:/vault/policies:ro`) 되어 있어, 호스트에서 `.hcl` 을 고치면 컨테이너 안에서 **이미 보입니다.** 이미지 재빌드도 컨테이너 재시작도 필요 없습니다.
+
+다만 **Vault 는 그 파일을 읽어서 정책을 적용하지 않습니다.** 정책은 Vault 내부 스토리지에 저장되므로 `vault policy write` 로 밀어넣어야 반영됩니다. 그게 bootstrap 이 하는 일입니다.
+
+```bash
+cd ~/infra && git pull                         # .hcl 파일이 서버에 있어야 합니다
+docker exec -it vault vault status             # Sealed: false 확인
+docker exec -it -e VAULT_TOKEN='<root-token>' vault sh /vault/scripts/bootstrap-bosspickseoul.sh
+docker exec -it vault vault policy read jenkins-bosspickseoul   # 반영 확인
+```
+
+> ⚠️ **`install-vault.sh` 를 쓰지 마십시오.** 그건 컨테이너를 띄우는 스크립트입니다. `vault.hcl` 이 `storage "file"` 에 auto-unseal 설정이 없어서, 컨테이너가 재생성되면 **Vault 가 sealed 상태로 떠서 수동 unseal 이 필요**합니다. 정책 변경에는 컨테이너를 건드릴 이유가 없습니다.
+
+재실행해도 안전한 이유:
+
+| bootstrap 동작 | 재실행 시 |
+| --- | --- |
+| `secrets enable kv` / `auth enable approle,userpass` | 이미 활성화되어 있으면 실패를 무시하고 넘어감 |
+| `vault policy write` × 3 | 덮어쓰기. 내용이 그대로면 실질 변화 없음 |
+| `vault write auth/approle/role/...` | **`role_id` 와 기존 `secret_id` 는 그대로 유지됩니다.** role 설정(TTL 등)만 갱신되고 자격증명은 별도 엔드포인트로 관리됩니다 |
+| Web UI 사용자 생성 | `VAULT_UI_USERNAME` / `VAULT_UI_PASSWORD` 를 넘기지 않으면 건너뜀 |
+
+따라서 **Jenkins credential 을 재발급할 필요가 없고**, 진행 중인 배포에도 영향이 없습니다.
+
+`require_admin_token` 검사가 있어 **Web UI userpass 계정 토큰으로는 실행되지 않습니다.** root token 또는 policy 갱신 권한이 있는 token 이 필요합니다.
 
 ## Web UI username/password 로그인
 
@@ -603,9 +640,15 @@ docker exec -it vault vault operator unseal
 ## 운영 주의사항
 
 - root token은 초기 설정과 긴급 복구에만 사용합니다.
+- **root token을 채팅·이슈·PR·로그에 붙여넣지 않습니다.** 노출됐다면 즉시 폐기하고 새로 발급합니다. 폐기하지 않으면 그 토큰으로 Vault 전체를 읽고 쓸 수 있습니다.
+  ```bash
+  docker exec -it -e VAULT_TOKEN='<노출된-root-token>' vault vault token revoke -self
+  docker exec -it vault vault operator generate-root -init   # unseal key 로 새 root token 발급
+  ```
 - Jenkins와 backend-1은 root token 대신 AppRole을 사용합니다.
-- 서비스 또는 환경이 분리되면 policy도 분리합니다.
-- 운영 중 `vault.hcl`을 바꾸면 컨테이너 재시작이 필요합니다.
+- 정책(`.hcl`)을 바꿨을 때는 컨테이너를 건드리지 말고 bootstrap만 다시 실행합니다. (`Bootstrap` 절 참고)
+- 운영 중 `vault.hcl`을 바꾸면 컨테이너 재시작이 필요하고, 재시작하면 **sealed 상태가 되어 수동 unseal이 필요**합니다.
+- 서비스 또는 환경이 분리되면 policy도 분리합니다. 단, Jenkins 파이프라인이 늘어나는 경우는 AppRole을 새로 만들지 말고 `jenkins-bosspickseoul.hcl`에 경로 블록을 추가합니다.
 - 공개망 노출이 필요하면 Nginx TLS proxy, IP allowlist, 방화벽 정책을 먼저 적용합니다.
 
 ## 문제 해결
