@@ -1,5 +1,17 @@
+# secret 을 담는 env 파일은 커밋하지 않는다.
+# 한 호스트에 deploy agent 를 여러 개 두면 .env.backend-dev, .env.frontend-dev 처럼
+# 파일을 나누므로 접미사가 붙은 것까지 모두 제외한다. 예시 파일만 예외.
 .env
+.env.*
+!.env.example
+
 jenkins-home/
+update-center-rootCAs/
+
+# agent 작업 디렉터리 (JENKINS_BUILDER_WORKDIR / JENKINS_DEPLOY_AGENT_WORKDIR)
 jenkins-builder-agent/
 jenkins-deploy-agent/
-update-center-rootCAs/
+backend-dev-agent/
+backend-prod-agent/
+frontend-dev-agent/
+frontend-prod-agent/

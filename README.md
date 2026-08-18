@@ -81,7 +81,7 @@ nginx 가 `.12` 에 있어 외부 진입은 어차피 1홉이지만, 게이트�
 
 ### 배포 전 필요한 것
 
-1. **`backend-prod-agent` 기동** — `.13` 에 Jenkins 배포 에이전트가 없습니다(`docker ps` 확인). 이게 없으면 prod 파이프라인이 실행 자체를 못 합니다. `jenkins/docker-compose-jenkins-deploy-agent.yml` 로 띄우고 라벨 `deploy-backend-prod` `deploy-frontend-prod` 를 함께 붙입니다. (노드는 호스트당 하나에 라벨 여러 개 — `jenkins/README.md` 참고)
+1. **`backend-prod-agent` 기동** — `.13` 에 Jenkins 배포 에이전트가 없습니다(`docker ps` 확인). 이게 없으면 prod 파이프라인이 실행 자체를 못 합니다. `jenkins/docker-compose-jenkins-deploy-agent.yml` 로 띄우고 라벨 `deploy-backend-prod` 를 붙입니다. 프론트 운영 배포까지 하려면 같은 호스트에 `frontend-prod-agent` 를 하나 더 띄웁니다(`jenkins/README.md` 참고).
 2. **Vault `kv/bosspickseoul/backend/prod/env` 에 `SPRING_PROFILES_ACTIVE=prod`** — 이 값이 `dev` 로 남아 있으면 운영이 dev 프로파일로 떠서 `ddl-auto: update` 로 배포 때마다 운영 스키마가 자동 변경됩니다.
 3. **`.13` swap 확대 검토** — 현재 prod 호스트가 2.0Gi, dev 호스트가 31Gi 입니다. 뒤집혀 있습니다. prod 쪽을 늘리는 편이 맞습니다.
 
