@@ -20,17 +20,30 @@ fi
 
 delete_tree() {
   prefix="$1"
-  # `vault kv list` 는 디렉터리에 / 접미사를 붙여 반환합니다. 헤더 2줄은 건너뜁니다.
-  for entry in $(vault kv list -format=table "kv/metadata/${prefix}" 2>/dev/null | tail -n +3); do
+
+  # 경로는 `kv/hondigagae/...` 처럼 **논리 경로**로 넘깁니다.
+  # `vault kv list` 는 KV v2 에서 /metadata 를 스스로 끼워 넣으므로
+  # `kv/metadata/...` 를 넘기면 kv/metadata/metadata/... 를 보게 되어
+  # 조용히 빈 결과가 돌아오고 아무것도 지워지지 않습니다.
+  #
+  # 출력은 표 형식이라 "Keys" 와 "----" 두 줄을 건너뜁니다.
+  # 디렉터리에는 / 접미사가 붙습니다.
+  for entry in $(vault kv list -format=table "kv/${prefix}" 2>/dev/null | tail -n +3); do
     case "$entry" in
       */) delete_tree "${prefix}$(printf '%s' "$entry" | tr -d '/')/" ;;
       *)
         echo "destroy: kv/${prefix}${entry}"
+        # metadata delete 는 모든 버전을 영구 삭제합니다 (kv delete 는 최신 버전만 soft delete).
         vault kv metadata delete "kv/${prefix}${entry}"
         ;;
     esac
   done
 }
+
+if ! vault kv list "kv/hondigagae/" >/dev/null 2>&1; then
+  echo "kv/hondigagae 아래에 secret 이 없거나 읽을 권한이 없습니다. 삭제할 것이 없습니다."
+  exit 0
+fi
 
 delete_tree "hondigagae/"
 
