@@ -674,3 +674,114 @@ docker exec vault ls -la /vault/file /vault/logs /vault/policies /vault/scripts
 ```
 
 `Initialized`가 `false`면 `vault operator init`을 먼저 실행합니다. `Sealed`가 `true`면 unseal key로 해제합니다.
+
+---
+
+## 혼디가개(hondigagae) Secret Path
+
+혼디가개는 **같은 Vault 인스턴스와 같은 `kv` mount 를 공유**하고, policy / AppRole / 경로만 분리합니다.
+Vault 를 새로 띄우거나 다시 초기화할 필요가 없습니다.
+
+```text
+kv/hondigagae/backend/dev/env
+kv/hondigagae/backend/prod/env
+kv/hondigagae/frontend/dev/env
+kv/hondigagae/frontend/prod/env
+```
+
+파이프라인은 BossPickSeoul 과 같은 `{root}/{env}/env` 규칙으로 경로를 조립합니다.
+root 기본값은 backend 잡이 `kv/hondigagae/backend`, frontend 잡이 `kv/hondigagae/frontend` 입니다.
+
+**환경당 secret 하나에 전 서비스의 env 키를 모아 둡니다.** 서비스별로 쪼개지 않습니다.
+`JWT_ACCESS_KEY` 처럼 여러 서비스가 같은 값을 써야 하는 키가 있어, 쪼개면 그 불일치가 곧 장애가 됩니다.
+
+key 목록의 단일 기준은 애플리케이션 레포의 `backend/.env.example` 과 `frontend/.env.example` 입니다.
+
+### 저장 예시
+
+```bash
+# 애플리케이션 레포에서 .env.example 을 복사해 값을 채운 뒤
+docker exec -i vault vault kv put -mount="kv" hondigagae/backend/dev/env env_file=@backend/.env
+docker exec -it vault vault kv get -mount="kv" hondigagae/backend/dev/env
+```
+
+### 포트 키에 주의
+
+compose 파일 하나에 dev/prod 서비스가 같이 정의되어 있고 `docker compose config` 가 양쪽을
+모두 해석합니다. 그래서 **dev secret 에도 `_PORT_PROD` 값을, prod secret 에도 `_PORT_DEV` 값을**
+넣습니다. 두 secret 에 같은 포트표를 넣어 두면 됩니다.
+
+프론트는 반대로 `FRONTEND_WEB_PORT` 하나만 씁니다(환경 접미사 없음). 환경별 `.env.runtime` 이
+따로 만들어지므로 각 secret 에 값 하나만 넣으면 됩니다.
+
+## 혼디가개 Bootstrap
+
+정책 파일:
+
+- `policies/jenkins-hondigagae.hcl`: Jenkins 배포용 읽기 권한 (**backend + frontend 공용**)
+- `policies/backend-hondigagae.hcl`: 배포 호스트 deploy/runtime 용 읽기 권한
+- `policies/ui-hondigagae.hcl`: Web UI 사용자가 `kv/hondigagae/*` 를 관리하는 권한
+
+실행:
+
+```bash
+cd ~/infra && git pull                         # .hcl 파일이 서버에 있어야 합니다
+docker exec -it vault vault status             # Sealed: false 확인
+docker exec -it -e VAULT_TOKEN='<root-token>' vault sh /vault/scripts/bootstrap-hondigagae.sh
+docker exec -it vault vault policy read jenkins-hondigagae   # 반영 확인
+```
+
+BossPickSeoul bootstrap 과 마찬가지로 `kv` mount 와 `approle`/`userpass` auth 는 이미
+활성화되어 있으면 그냥 넘어갑니다. 재실행해도 안전하고, 기존 `role_id`/`secret_id` 는 유지됩니다.
+
+> ⚠️ `install-vault.sh` 를 쓰지 마십시오. 컨테이너를 재생성하면 auto-unseal 이 없어
+> **Vault 가 sealed 상태로 떠서 수동 unseal 이 필요**해집니다. 정책 변경에 컨테이너를 건드릴 이유가 없습니다.
+
+### AppRole
+
+| AppRole | 쓰는 곳 | Jenkins credential | 읽는 경로 |
+| --- | --- | --- | --- |
+| `jenkins-hondigagae` | backend 잡 7개, frontend 잡 | `hondigagae-vault-role-id`, `hondigagae-vault-secret-id` | `kv/hondigagae/backend/*`, `kv/hondigagae/frontend/*` |
+| `backend-hondigagae` | 배포 호스트 deploy/runtime | (deploy agent secret) | `kv/hondigagae/backend/*` |
+
+TTL 은 BossPickSeoul 과 같습니다 (jenkins: token 1h/4h, secret_id 만료 없음 /
+backend: token 30m/2h, secret_id 720h).
+
+발급:
+
+```bash
+docker exec -it vault sh /vault/scripts/rotate-approle-secret.sh jenkins-hondigagae
+```
+
+출력된 `role_id` / `new_secret_id` 를 Jenkins Secret text credential
+`hondigagae-vault-role-id` / `hondigagae-vault-secret-id` 에 넣습니다.
+`rotate-approle-secret.sh` 는 BossPickSeoul 과 공용 스크립트라 role 이름만 인자로 넘기면 됩니다.
+
+### Web UI 계정
+
+이미 BossPickSeoul UI 계정이 있다면 **새 계정을 만들지 말고 정책만 덧붙이는 편**이 낫습니다.
+
+```bash
+docker exec -it vault vault write auth/userpass/users/<username>/policies \
+  policies="ui-bosspickseoul,ui-hondigagae"
+```
+
+새로 만들려면 bootstrap 실행 시 환경변수를 넘깁니다.
+
+```bash
+docker exec -it \
+  -e VAULT_UI_USERNAME='username' \
+  -e VAULT_UI_PASSWORD='password' \
+  vault sh /vault/scripts/bootstrap-hondigagae.sh
+```
+
+### kv 경로 초기화
+
+⚠️ **`reset-kv-bosspickseoul.sh` 를 혼디가개 정리에 쓰지 마십시오.**
+그 스크립트는 `kv` mount 를 통째로 지우므로 BossPickSeoul 시크릿까지 함께 날아갑니다.
+
+혼디가개 경로만 지우려면 전용 스크립트를 씁니다.
+
+```bash
+docker exec -it -e CONFIRM_RESET_KV=hondigagae vault sh /vault/scripts/reset-kv-hondigagae.sh
+```
