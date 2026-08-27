@@ -103,7 +103,18 @@ nginx 가 `.12` 에 있어 외부 진입은 어차피 1홉이지만, 게이트�
 2. **dev 와 prod 는 호스트를 공유하지 않습니다.** dev 는 `.11`, prod 는 `.13`.
 3. **`ollama-01`(`.10`) 은 인프라 계층 전용입니다.** 빌드·시크릿·메시징·AI. 사용자 트래픽을 받는 애플리케이션은 두지 않습니다.
 4. **호스트 간 통신은 컨테이너명이 아니라 사설 IP** 를 씁니다. `8llow8llowme-net` 은 호스트별 브리지라 다른 호스트의 컨테이너명이 해석되지 않습니다. 과거 `web-ssr:3000` 으로 프록시했다가 같은 호스트의 tripmarble 컨테이너가 BossPickSeoul 요청에 응답한 사고가 있었습니다.
-5. **포트 대역을 지킵니다.** dev `6xxx`, BossPickSeoul prod `9xxx`, TripMarble prod `8xxx`, 인프라 도구는 `1xxxx~5xxxx`.
+5. **포트 대역을 지킵니다.**
+
+   | 대상 | dev | prod |
+   | --- | --- | --- |
+   | BossPickSeoul | `6xxx` | `9xxx` |
+   | 혼디가개 | `7xxx` | `5xxx` |
+   | TripMarble | — | `8xxx` |
+   | 인프라 도구 | `1xxxx~5xxxx` (5자리) | 〃 |
+
+   프로젝트가 늘 때 대역을 새로 잡는 이유는 단순합니다. dev 는 `.11`, prod 는 `.13` 한 대씩에
+   여러 프로젝트가 함께 올라가므로 대역이 겹치면 포트 바인딩이 실패합니다. 실제로 BossPickSeoul 과
+   혼디가개는 둘 다 auth-service 가 6081 을 원해 대역을 갈랐습니다.
 6. **네이티브 바이너리가 섞이는 산출물은 빌더에서 그대로 내보내지 않습니다.** 빌더는 x86_64, 배포 대상은 aarch64 입니다.
 
 ---
@@ -123,7 +134,46 @@ nginx 가 `.12` 에 있어 외부 진입은 어차피 1홉이지만, 게이트�
 
 ---
 
-## 6. 컴포넌트 문서
+---
+
+## 6. 혼디가개 배치 요약
+
+| 대상 | 환경 | 호스트 | 호스트 포트 | 도메인 |
+| --- | --- | --- | --- | --- |
+| 백엔드 게이트웨이 | dev | `192.168.0.11` | 7000 | `api-dev.hondigagae.com` |
+| 백엔드 게이트웨이 | prod | `192.168.0.13` | 5000 | `api.hondigagae.com` |
+| 백엔드 auth (단독) | dev | `192.168.0.11` | 7081 | `api-dev.hondigagae.com` |
+| 백엔드 auth (단독) | prod | `192.168.0.13` | 5081 | `api.hondigagae.com` |
+| 프론트 웹 | dev | `192.168.0.11` | 7300 | `dev.hondigagae.com` |
+| 프론트 웹 | prod | `192.168.0.13` | 5300 | `www.hondigagae.com` |
+
+백엔드는 7종입니다 — `service-discovery`(7761/5761), `api-gateway`, `auth-service`,
+`tour-service`(7082/5082), `plan-service`(7083/5083), `ai-service`(7085/5085),
+`batch-service`(7080/5080). 전체 포트표는 애플리케이션 레포의 `backend/docs/deploy-guide.md` 입니다.
+
+Jenkins agent 와 Vault 는 BossPickSeoul 과 **공유**합니다. 새로 띄울 것은 없습니다.
+분리되는 것은 Vault 경로(`kv/hondigagae/*`), AppRole(`jenkins-hondigagae`),
+Jenkins credential(`hondigagae-vault-*`), 배포 lock(`hondigagae-backend-deploy`) 뿐입니다.
+
+### ⚠️ prod 호스트 메모리가 빠듯합니다
+
+`backend-1`(`.13`)은 available 6.4Gi 입니다. 여기에 tripmarble prod 5종(실측 1.4Gi)과
+BossPickSeoul prod 백엔드 8종 + 프론트 1종(추정 3.4Gi)이 예정돼 있고, 혼디가개 7종(추정 2.3Gi)을
+더하면 합계가 상한에 닿습니다.
+
+세 가지 중 하나를 선택해야 합니다.
+
+| 선택지 | 내용 |
+| --- | --- |
+| 메모리 상한 하향 | `{SVC}_MEM_LIMIT_PROD` 를 서비스별로 낮춰 잡습니다. 서비스당 실측이 ~335MB 이므로 768m 는 과하게 잡힌 값입니다. |
+| swap 확대 | `.13` 은 현재 swap 2.0Gi, dev 호스트가 31Gi 로 뒤집혀 있습니다. prod 쪽을 늘리는 편이 맞습니다. |
+| 호스트 추가 | 백엔드 전용 서버를 도입해 prod 를 옮깁니다. 그때 손볼 곳은 nginx `upstream` 2줄, deploy agent 위치, Prometheus 대상 IP 뿐입니다. |
+
+공모전 제출 기간처럼 트래픽이 낮은 구간에서는 첫 번째로 충분합니다.
+
+---
+
+## 7. 컴포넌트 문서
 
 | 디렉터리 | 내용 |
 | --- | --- |

@@ -413,3 +413,74 @@ cd ~/infra/certbot
 - 전용 로그 파일: `/var/log/nginx/bosspickseoul_dev_access.log`
 - `docker exec nginx tail -f /var/log/nginx/bosspickseoul_dev_access.log`로 확인합니다
 - 개발 API 서버도 전역 `/var/log/nginx/access.log`에 계속 기록합니다
+
+---
+
+## 혼디가개 도메인 맵
+
+| 도메인 | 대상 | 호스트 | 설정 파일 |
+| --- | --- | --- | --- |
+| `https://www.hondigagae.com` | 운영 웹 (Next.js SSR) | backend-1 `192.168.0.13:5300` | `conf.d/hondigagae.conf` |
+| `https://dev.hondigagae.com` | 개발 웹 (Next.js SSR) | main-server `192.168.0.11:7300` | `conf.d/dev.hondigagae.conf` |
+| `https://api.hondigagae.com` | 운영 API 게이트웨이 | backend-1 `192.168.0.13:5000` | `conf.d/api.hondigagae.conf` |
+| `https://api-dev.hondigagae.com` | 개발 API 게이트웨이 | main-server `192.168.0.11:7000` | `conf.d/api-dev.hondigagae.conf` |
+
+auth-service 는 게이트웨이를 거치지 않고 직결한다 (prod `5081`, dev `7081`).
+BossPickSeoul·tripmarble 과 동일한 구조로, Swagger 는 api-gateway 가 auth 포함 4개 서비스 문서를
+집계해 제공한다. 자세한 라우팅은 각 conf 파일을 참고한다.
+
+### 포트 대역이 BossPickSeoul 과 다른 이유
+
+혼디가개는 dev `7XXX` / prod `5XXX` 를 쓴다. BossPickSeoul 이 dev `6XXX` / prod `9XXX` 를
+이미 점유하고 있어, 같은 호스트(dev `.11` / prod `.13`)에 올리면 둘 다 auth 가 6081 을 원해
+포트 바인딩이 실패하기 때문이다. (README §4 배치 원칙 5번)
+
+FE/BE 모두 **컨테이너명이 아니라 사설 IP로 프록시**한다. `8llow8llowme-net` 은 호스트별
+브리지라 storage(`192.168.0.12`)에서 도는 nginx 는 다른 호스트의 컨테이너명을 해석하지 못한다.
+
+### ⚠️ 네 파일 모두 HTTPS 블록이 주석 처리된 상태로 커밋되어 있다
+
+`ssl_certificate` 파일이 없으면 nginx 가 기동조차 못 하고, 이 nginx 는 전 도메인의 단일
+인그레스라 다른 서비스까지 함께 내려간다. 인증서를 발급한 뒤 주석을 풀고
+`nginx -t && nginx -s reload` 한다.
+
+적용 순서:
+
+```bash
+# 1) conf 4개를 배치하고 HTTP 블록만 살린 채 reload
+cd ~/infra && git pull
+docker exec nginx nginx -t && docker exec nginx nginx -s reload
+
+# 2) 인증서 발급 (apex 는 www 를 함께 담는다)
+cd ~/infra/certbot
+./init-cert-with-www.sh hondigagae.com
+./init-cert-non-www.sh dev.hondigagae.com
+./init-cert-non-www.sh api.hondigagae.com
+./init-cert-non-www.sh api-dev.hondigagae.com
+
+# 3) 각 conf 의 HTTPS 블록 주석 해제 후 다시 reload
+docker exec nginx nginx -t && docker exec nginx nginx -s reload
+```
+
+각 conf 의 `listen 80` 블록이 HTTP-01 챌린지 경로(`/.well-known/acme-challenge/`)를 이미
+열어 주므로 `create-ssl-bootstrap-conf.sh` 로 별도 bootstrap conf 를 만들 필요가 없다.
+
+### DNS 체크리스트
+
+- `hondigagae.com` A/AAAA -> 공개 Nginx 호스트
+- `www.hondigagae.com` A/AAAA 또는 CNAME -> 공개 Nginx 호스트
+- `dev.hondigagae.com` A/AAAA 또는 CNAME -> 공개 Nginx 호스트
+- `api.hondigagae.com` A/AAAA 또는 CNAME -> 공개 Nginx 호스트
+- `api-dev.hondigagae.com` A/AAAA 또는 CNAME -> 공개 Nginx 호스트
+
+### Certbot 체크리스트
+
+- `hondigagae.com` 인증서는 `hondigagae.com` 과 `www.hondigagae.com` 을 포함한다
+- `dev.hondigagae.com` / `api.hondigagae.com` / `api-dev.hondigagae.com` 은 각각 별도 인증서가 필요하다
+
+### 개발 access 로그
+
+- API: `/var/log/nginx/hondigagae_api_dev_access.log`
+- 웹: `/var/log/nginx/hondigagae_web_dev_access.log`
+- 운영도 각각 `hondigagae_api_access.log`, `hondigagae_web_access.log` 에 따로 남는다
+- 전역 `/var/log/nginx/access.log` 에도 계속 기록된다
